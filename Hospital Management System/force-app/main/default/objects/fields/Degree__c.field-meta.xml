@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Degree__c</fullName>
+    <label>Degree</label>
+    <type>Picklist</type>
+    <description>
+        Academic and professional medical degree held by the doctor.
+    </description>
+    <required>true</required>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>MBBS</fullName><default>false</default></value>
+            <value><fullName>MD</fullName><default>false</default></value>
+            <value><fullName>BDS</fullName><default>false</default></value>
+            <value><fullName>MS</fullName><default>false</default></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

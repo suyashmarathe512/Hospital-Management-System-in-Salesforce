@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Email__c</fullName>
+    <label>Email</label>
+    <type>Email</type>
+    <description>
+        Official email address of the doctor used for communication and notifications.
+    </description>
+    <required>false</required>
+</CustomField>
