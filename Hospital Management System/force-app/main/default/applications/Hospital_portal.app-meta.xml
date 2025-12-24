@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#0070D2</headerColor>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
+    </brand>
+    <formFactors>Small</formFactors>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>true</isOmniPinnedViewEnabled>
+    <label>Hospital portal</label>
+    <navType>Standard</navType>
+    <tabs>standard-Account</tabs>
+    <tabs>Doctor__c</tabs>
+    <tabs>Prescription__c</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>
