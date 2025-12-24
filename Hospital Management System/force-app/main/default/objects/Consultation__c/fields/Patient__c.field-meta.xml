@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Patient__c</fullName>
+    <label>Patient</label>
+    <type>Lookup</type>
+    <referenceTo>Account</referenceTo>
+    <relationshipLabel>Consultations</relationshipLabel>
+    <relationshipName>Consultations</relationshipName>
+    <description>
+        Patient involved in the consultation.
+    </description>
+</CustomField>

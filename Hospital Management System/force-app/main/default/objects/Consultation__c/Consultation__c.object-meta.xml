@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+
+    <label>Consultation</label>
+    <pluralLabel>Consultations</pluralLabel>
+
+    <nameField>
+        <label>Consultation Number</label>
+        <type>AutoNumber</type>
+        <displayFormat>CON-{0000}</displayFormat>
+    </nameField>
+
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+
+    <description>
+        Represents each consultation between a patient and a doctor.
+        Stores visit dates, charges, follow-up information, and visit counts
+        for clinical and billing purposes.
+    </description>
+
+    <enableActivities>true</enableActivities>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableHistory>true</enableHistory>
+
+</CustomObject>
