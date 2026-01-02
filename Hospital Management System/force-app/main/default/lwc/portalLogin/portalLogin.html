@@ -1,0 +1,134 @@
+<template>
+    <div class="portal-container">
+        <!-- LOGIN VIEW -->
+        <template if:false={isCreateMode}>
+            <div class="card login-card">
+                <div class="header-section">
+                    <h1 class="hospital-title">Hospital Portal</h1>
+                    <p class="subtitle">Secure Patient Login</p>
+                </div>
+                <div class="form-content">
+                    <template if:true={errorMessage}>
+                        <div class="error-banner">{errorMessage}</div>
+                    </template>
+                    <lightning-input 
+                        label="Email" 
+                        type="email" 
+                        data-id="loginEmail" 
+                        value={loginEmail} 
+                        onchange={handleLoginEmailChange}
+                        class="input-field">
+                    </lightning-input>
+                    <lightning-input 
+                        label="Password" 
+                        type="password" 
+                        data-id="loginPassword" 
+                        value={loginPassword} 
+                        onchange={handleLoginPasswordChange}
+                        class="input-field">
+                    </lightning-input>
+                    <div class="action-group">
+                        <lightning-button 
+                            variant="brand" 
+                            label='Log In'
+                            onclick={handleLogin} 
+                            disabled={isLoggingIn}
+                            class="full-width-btn">
+                        </lightning-button>
+                    </div>
+                    <div class="footer-link">
+                        <p>New Patient? <a href="javascript:void(0);" onclick={openCreate}>Create Account</a></p>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <!-- CREATE ACCOUNT VIEW -->
+        <template if:true={isCreateMode}>
+            <div class="card create-card">
+                <div class="header-section">
+                    <h1 class="hospital-title">Patient Registration</h1>
+                    <p class="subtitle">Please fill in your details</p>
+                </div>
+                <div class="form-scroll-area">
+                    <template if:true={createError}>
+                        <div class="error-banner">{createError}</div>
+                    </template>
+                    <template if:true={createMessage}>
+                        <div class="success-banner">{createMessage}</div>
+                    </template>
+                    <!-- Personal Information -->
+                    <h3 class="section-header">Personal Information</h3>
+                    <div class="row">
+                        <div class="col">
+                            <lightning-combobox label="Salutation" data-id="salutation" value={salutation} options={salutationOptions} onchange={handleCreateChange}></lightning-combobox>
+                        </div>
+                        <div class="col">
+                            <lightning-input label="First Name" data-id="firstName" value={firstName} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <lightning-input label="Last Name" required data-id="lastName" value={lastName} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                        <div class="col">
+                            <lightning-input type="date" label="Birthdate" data-id="birthdate" value={birthdate} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <!-- Contact Information -->
+                    <h3 class="section-header">Contact Information</h3>
+                    <div class="row">
+                        <div class="col">
+                            <lightning-input type="email" label="Email" required data-id="createEmail" value={createEmail} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                        <div class="col">
+                            <lightning-input type="password" label="Password" required data-id="createPassword" value={createPassword} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <lightning-input type="tel" label="Mobile" data-id="mobile" value={mobile} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                        <div class="col">
+                            <lightning-input type="tel" label="Phone" data-id="phone" value={phone} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <lightning-input type="tel" label="Other Phone" data-id="otherPhone" value={otherPhone} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <!-- Mailing Address -->
+                    <h3 class="section-header">Mailing Address</h3>
+                    <div class="row">
+                        <div class="col full-width">
+                            <lightning-input label="Street" data-id="mailingStreet" value={mailingStreet} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><lightning-input label="City" data-id="mailingCity" value={mailingCity} onchange={handleCreateChange}></lightning-input></div>
+                        <div class="col"><lightning-input label="State/Province" data-id="mailingState" value={mailingState} onchange={handleCreateChange}></lightning-input></div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><lightning-input label="Zip/Postal Code" data-id="mailingPostalCode" value={mailingPostalCode} onchange={handleCreateChange}></lightning-input></div>
+                        <div class="col"><lightning-input label="Country" data-id="mailingCountry" value={mailingCountry} onchange={handleCreateChange}></lightning-input></div>
+                    </div>
+                    <!-- Other Address -->
+                    <h3 class="section-header">Other Address</h3>
+                    <div class="row">
+                        <div class="col full-width">
+                            <lightning-input label="Street" data-id="otherStreet" value={otherStreet} onchange={handleCreateChange}></lightning-input>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col"><lightning-input label="City" data-id="otherCity" value={otherCity} onchange={handleCreateChange}></lightning-input></div>
+                        <div class="col"><lightning-input label="State/Province" data-id="otherState" value={otherState} onchange={handleCreateChange}></lightning-input></div>
+                    </div>
+                </div>
+                <div class="footer-actions">
+                    <lightning-button label="Cancel" onclick={closeCreate} class="action-btn"></lightning-button>
+                    <lightning-button variant="brand" label="Register" onclick={handleCreateAccount} disabled={isCreating} class="action-btn"></lightning-button>
+                </div>
+            </div>
+        </template>
+    </div>
+</template>
