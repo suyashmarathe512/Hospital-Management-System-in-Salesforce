@@ -24,28 +24,28 @@
                         <div aria-hidden="false" class="slds-section__content">
                             <div class="slds-grid slds-wrap slds-gutters">
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="Salutation" value={account.Salutation} readonly></lightning-input>
+                                    <lightning-input label="Salutation" value={caccount.Salutation} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="First Name" value={account.FirstName} readonly></lightning-input>
+                                    <lightning-input label="First Name" value={caccount.FirstName} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="Last Name" value={account.LastName} readonly></lightning-input>
+                                    <lightning-input label="Last Name" value={caccount.LastName} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="date" label="Birthdate" value={account.PersonBirthdate} readonly></lightning-input>
+                                    <lightning-input type="date" label="Birthdate" value={caccount.PersonBirthdate} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Mobile" value={account.PersonMobilePhone} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Mobile" value={caccount.PersonMobilePhone} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="email" label="Email" value={account.PersonEmail} readonly></lightning-input>
+                                    <lightning-input type="email" label="Email" value={caccount.PersonEmail} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Phone" value={account.Phone} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Phone" value={caccount.Phone} readonly></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Other Phone" value={account.Other_Phone__c} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Other Phone" value={caccount.Other_Phone__c} readonly></lightning-input>
                                 </div>
                             </div>
                         </div>
@@ -65,11 +65,11 @@
                                         <div class="slds-form-element__control">
                                             <div class="slds-form-element__static field-value">
                                                 <lightning-formatted-address
-                                                    street={account.PersonMailingStreet}
-                                                    city={account.PersonMailingCity}
-                                                    country={account.PersonMailingCountry}
-                                                    province={account.PersonMailingState}
-                                                    postal-code={account.PersonMailingPostalCode}
+                                                    street={caccount.PersonMailingStreet}
+                                                    city={caccount.PersonMailingCity}
+                                                    country={caccount.PersonMailingCountry}
+                                                    province={caccount.PersonMailingState}
+                                                    postal-code={caccount.PersonMailingPostalCode}
                                                 ></lightning-formatted-address>
                                             </div>
                                         </div>
@@ -82,11 +82,11 @@
                                         <div class="slds-form-element__control">
                                             <div class="slds-form-element__static field-value">
                                                 <lightning-formatted-address
-                                                    street={account.PersonOtherStreet}
-                                                    city={account.PersonOtherCity}
-                                                    country={account.PersonOtherCountry}
-                                                    province={account.PersonOtherState}
-                                                    postal-code={account.PersonOtherPostalCode}
+                                                    street={caccount.PersonOtherStreet}
+                                                    city={caccount.PersonOtherCity}
+                                                    country={caccount.PersonOtherCountry}
+                                                    province={caccount.PersonOtherState}
+                                                    postal-code={caccount.PersonOtherPostalCode}
                                                 ></lightning-formatted-address>
                                             </div>
                                         </div>

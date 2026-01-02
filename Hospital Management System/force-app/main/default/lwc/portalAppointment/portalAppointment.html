@@ -1,0 +1,56 @@
+<template>
+    <lightning-card title="My Appointments" icon-name="standard:service_appointment">
+        <div slot="actions">
+            <lightning-button label="Book Appointment" onclick={handleBookAppointment} variant="brand"></lightning-button>
+        </div>
+        <div class="slds-p-around_medium">
+            <template if:true={appointments.length}>
+                <lightning-datatable
+                    key-field="Id"
+                    data={appointments}
+                    columns={columns}
+                    hide-checkbox-column
+                    sorted-by={sortedBy}
+                    sorted-direction={sortedDirection}
+                    onsort={handleSort}>
+                </lightning-datatable>
+            </template>
+            <template if:false={appointments.length}>
+                <p class="slds-text-align_center">No appointments found.</p>
+            </template>
+        </div>
+    </lightning-card>
+    <!-- Modal for Booking Appointment -->
+    <template if:true={isModalOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse" size="small"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-text-heading_medium slds-hyphenate">Book New Appointment</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-combobox
+                        name="doctor"
+                        label="Select Doctor"
+                        value={doctorId}
+                        placeholder="Select Doctor"
+                        options={doctorOptions}
+                        onchange={handleChange}
+                        data-id="doctor"
+                        required>
+                    </lightning-combobox>
+                    <lightning-input type="date" label="Appointment Date" value={appointmentDate} onchange={handleChange} data-id="date" required></lightning-input>
+                    <lightning-textarea label="Reason for Visit" value={reason} onchange={handleChange} data-id="reason"></lightning-textarea>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeModal} class="slds-m-right_small"></lightning-button>
+                    <lightning-button label="Save" variant="brand" onclick={saveAppointment}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

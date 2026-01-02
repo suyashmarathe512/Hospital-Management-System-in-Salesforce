@@ -66,4 +66,34 @@ public with sharing class PortalProfileController {
         ];
         return result;
     }
+
+    @AuraEnabled(cacheable=true)
+    public static List<Prescription__c> getPrescriptions(Id accountId) {
+        return [
+            SELECT 
+                Id, Name, Total_Amount__c, Total_Medication_Amount__c, Notes__c, CreatedDate,
+                (SELECT Id, Name, Dosage__c, Quantity__c FROM Medications__r)
+            FROM 
+                Prescription__c
+            WHERE 
+                Account__c = :accountId
+            ORDER BY 
+                CreatedDate DESC
+        ];
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<Consultation__c> getConsultations(Id accountId) {
+        return [
+            SELECT 
+                Id, Name, Date_of_Visit__c, Next_Visit__c, Visit_Charges__c,
+                Doctor__c, Doctor__r.Name, Patient__c, Patient__r.Name
+            FROM 
+                Consultation__c
+            WHERE 
+                Patient__c = :accountId
+            ORDER BY 
+                Date_of_Visit__c DESC
+        ];
+    }
 }

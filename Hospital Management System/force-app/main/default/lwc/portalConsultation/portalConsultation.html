@@ -1,0 +1,20 @@
+<template>
+    <lightning-card title="My Consultations" icon-name="standard:visit_templates">
+        <div class="slds-p-around_medium">
+            <template if:true={consultations}>
+                <lightning-datatable
+                    key-field="Id"
+                    data={consultations}
+                    columns={columns}
+                    sorted-by={sortedBy}
+                    sorted-direction={sortedDirection}
+                    onsort={handleSort}
+                    hide-checkbox-column>
+                </lightning-datatable>
+            </template>
+            <template if:false={consultations}>
+                <p class="slds-text-align_center slds-text-color_weak">No consultations found.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>
