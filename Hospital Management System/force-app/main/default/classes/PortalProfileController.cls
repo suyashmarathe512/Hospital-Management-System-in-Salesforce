@@ -66,7 +66,6 @@ public with sharing class PortalProfileController {
         ];
         return result;
     }
-
     @AuraEnabled(cacheable=true)
     public static List<Prescription__c> getPrescriptions(Id accountId) {
         return [
@@ -81,7 +80,6 @@ public with sharing class PortalProfileController {
                 CreatedDate DESC
         ];
     }
-
     @AuraEnabled(cacheable=true)
     public static List<Consultation__c> getConsultations(Id accountId) {
         return [
