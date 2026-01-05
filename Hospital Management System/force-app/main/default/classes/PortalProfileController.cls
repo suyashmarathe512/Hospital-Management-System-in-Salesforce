@@ -80,18 +80,4 @@ public with sharing class PortalProfileController {
                 CreatedDate DESC
         ];
     }
-    @AuraEnabled(cacheable=true)
-    public static List<Consultation__c> getConsultations(Id accountId) {
-        return [
-            SELECT 
-                Id, Name, Date_of_Visit__c, Next_Visit__c, Visit_Charges__c,
-                Doctor__c, Doctor__r.Name, Patient__c, Patient__r.Name
-            FROM 
-                Consultation__c
-            WHERE 
-                Patient__c = :accountId
-            ORDER BY 
-                Date_of_Visit__c DESC
-        ];
-    }
 }

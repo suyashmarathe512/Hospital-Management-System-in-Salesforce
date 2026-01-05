@@ -1,32 +1,27 @@
 import { LightningElement, wire, track } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
-import getPrescriptions from '@salesforce/apex/PortalProfileController.getPrescriptions';
-
+import getPrescriptions from '@salesforce/apex/c/PortalPrescriptionController.getPrescriptions';
 const MEDICATION_COLUMNS = [
-    { label: 'Medication Name', fieldName: 'Medication_Name__c' },
+    { label: 'Medication Name', fieldName: 'Name' },
     { label: 'Dosage', fieldName: 'Dosage__c' },
     { label: 'Quantity', fieldName: 'Quantity__c', type: 'number' }
 ];
-
 export default class PatientPrescriptions extends LightningElement {
-    @track accountId;
+    @track accountId; 
     @track prescriptions;
     columns = MEDICATION_COLUMNS;
-
     @wire(CurrentPageReference)
     getStateParameters(currentPageReference) {
         if (currentPageReference && currentPageReference.state.accountId) {
             this.accountId = currentPageReference.state.accountId;
         }
     }
-
     connectedCallback() {
         const storedAccountId = window.sessionStorage.getItem('portalAccountId');
         if (!this.accountId && storedAccountId) {
             this.accountId = storedAccountId;
         }
     }
-
     @wire(getPrescriptions, { accountId: '$accountId' })
     wiredPrescriptions({ error, data }) {
         if (data) {

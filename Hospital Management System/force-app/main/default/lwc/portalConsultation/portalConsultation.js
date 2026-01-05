@@ -1,6 +1,6 @@
 import { LightningElement, wire, track } from 'lwc';
 import { CurrentPageReference } from 'lightning/navigation';
-import getConsultations from '@salesforce/apex/PortalProfileController.getConsultations';
+import getConsultations from '@salesforce/apex/PortalConsultationController.getConsultations';
 const COLUMNS = [
     { label: 'Consultation Number', fieldName: 'Name' },
     { label: 'Patient', fieldName: 'PatientName' },
