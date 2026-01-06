@@ -51,10 +51,15 @@ public with sharing class AppointmentSyncBatch implements Database.Batchable<SOb
                 Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
                 List<Appointment__c> toUpdate = new List<Appointment__c>();
                 for (String clientId : responseMap.keySet()) {
-                    toUpdate.add(new Appointment__c(
-                        Id = clientId,
-                        External_Record_Id__c = (String) responseMap.get(clientId)
-                    ));
+                    Object val = responseMap.get(clientId);
+                    if (val instanceof Map<String, Object>) {
+                        Map<String, Object> details = (Map<String, Object>) val;
+                        toUpdate.add(new Appointment__c(
+                            Id = clientId,
+                            External_Record_Id__c = (String) details.get('serverAppointmentId'),
+                            Appointment_Status__c = (String) details.get('status')
+                        ));
+                    }
                 }
                 if (!toUpdate.isEmpty()) {
                     update toUpdate;
