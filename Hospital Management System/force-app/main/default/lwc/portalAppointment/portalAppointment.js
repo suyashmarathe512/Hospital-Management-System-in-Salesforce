@@ -8,6 +8,7 @@ import bookAppointment from '@salesforce/apex/PortalAppointmentController.bookAp
 const COLUMNS = [
     { label: 'Appointment ID', fieldName: 'Name', sortable: true },
     { label: 'Doctor', fieldName: 'DoctorName', sortable: true },
+    { label: 'Type', fieldName: 'Appointment_Type__c', sortable: true },
     { label: 'Date', fieldName: 'Appointment_Date__c', type: 'date', sortable: true },
     { label: 'Status', fieldName: 'Appointment_Status__c', sortable: true },
     { label: 'Reason', fieldName: 'Reason_for_Visit__c', sortable: true }
@@ -18,12 +19,18 @@ export default class PortalAppointment extends LightningElement {
     @track doctorId;
     @track appointmentDate;
     @track reason;
+    @track appointmentType;
     @track sortedBy;
     @track sortedDirection = 'asc';
     columns = COLUMNS;
     wiredAppointmentsResult;
     appointments = [];
     doctorOptions = [];
+    appointmentTypeOptions = [
+        { label: 'Follow-up', value: 'Follow-up' },
+        { label: 'Emergency', value: 'Emergency' },
+        { label: 'Routine Checkup', value: 'Routine Checkup' }
+    ];
     @wire(CurrentPageReference)
     getStateParameters(currentPageReference) {
         if (currentPageReference && currentPageReference.state.accountId) {
@@ -50,7 +57,9 @@ export default class PortalAppointment extends LightningElement {
         if (result.data) {
             this.appointments = result.data.map(record => ({
                 ...record,
-                DoctorName: record.Doctor__r ? record.Doctor__r.Name : ''
+                DoctorName: record.Doctor__r && record.Doctor__r.Name ? record.Doctor__r.Name : 'Not yet assigned',
+                // Ensure the Type column binds even if backend omits the field
+                Appointment_Type__c: record.Appointment_Type__c || '—'
             }));
         } else if (result.error) {
             console.error('Error loading appointments', result.error);
@@ -69,24 +78,31 @@ export default class PortalAppointment extends LightningElement {
     handleChange(event) {
         const field = event.target.dataset.id;
         if (field === 'doctor') this.doctorId = event.target.value;
+        if (field === 'type') this.appointmentType = event.target.value;
         if (field === 'date') this.appointmentDate = event.target.value;
         if (field === 'reason') this.reason = event.target.value;
     }
 
     saveAppointment() {
-        if (!this.doctorId || !this.appointmentDate) {
-            this.dispatchEvent(new ShowToastEvent({ title: 'Error', message: 'Please fill in all required fields', variant: 'error' }));
+        if (!this.appointmentDate || !this.appointmentType) {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Error', message: 'Please select appointment type and date', variant: 'error' }));
             return;
         }
-        bookAppointment({ accountId: this.accountId, doctorId: this.doctorId, appointmentDate: this.appointmentDate, reason: this.reason })
+        bookAppointment({
+                accountId: this.accountId,
+                doctorId: this.doctorId,
+                appointmentDate: this.appointmentDate,
+                reason: this.reason,
+                appointmentType: this.appointmentType
+            })
             .then(() => {
                 this.dispatchEvent(new ShowToastEvent({ title: 'Success', message: 'Appointment Scheduled Successfully', variant: 'success' }));
                 this.closeModal();
                 return refreshApex(this.wiredAppointmentsResult);
             })
-            .catch(error => this.dispatchEvent(new ShowToastEvent({ title: 'Error', message: error.body.message, variant: 'error' })));
+            .catch(error => this.dispatchEvent(new ShowToastEvent({ title: 'Error', message: error.body?.message || 'Unknown error', variant: 'error' })));
     }
-    clearForm() { this.doctorId = null; this.appointmentDate = null; this.reason = null; }
+    clearForm() { this.doctorId = null; this.appointmentDate = null; this.reason = null; this.appointmentType = null; }
 
     handleSort(event) {
         this.sortedBy = event.detail.fieldName;
@@ -105,4 +121,4 @@ export default class PortalAppointment extends LightningElement {
         });
         this.appointments = parseData;
     }
-}a
+}

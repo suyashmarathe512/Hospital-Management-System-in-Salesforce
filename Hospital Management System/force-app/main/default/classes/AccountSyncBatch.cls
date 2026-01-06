@@ -2,42 +2,56 @@ public with sharing class AccountSyncBatch implements Database.Batchable<sObject
     public void execute(SchedulableContext sc) {
         Database.executeBatch(new AccountSyncBatch(), 200);
     }
-    public Database.QueryLocator start(Database.BatchableContext bc) {
-        // Query Accounts that are new (External_Record_Id__c is null) or have been updated recently.
+    public Database.QueryLocator start(Database.BatchableContext bc) {        
         // We look back 20 minutes to cover the 15-minute schedule interval plus a buffer.
         Datetime timeWindow = Datetime.now().addMinutes(-20);
         return Database.getQueryLocator([
             SELECT 
-                Id, Name, Phone, Type, Industry, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry, External_Record_Id__c 
+                Id, Salutation, FirstName, LastName, PersonBirthdate, Age__c, PersonMobilePhone, Phone, PersonEmail, Login_Password__c,
+                PersonMailingStreet, PersonMailingCity, PersonMailingState, PersonMailingPostalCode, PersonMailingCountry,
+                PersonOtherStreet, PersonOtherCity, PersonOtherState, PersonOtherPostalCode, PersonOtherCountry, External_Record_Id__c 
             FROM 
-                Account 
+                Account
             WHERE 
-                External_Record_Id__c = NULL OR LastModifiedDate >= :timeWindow
+                isPersonAccount = True AND (External_Record_Id__c = NULL OR LastModifiedDate >= :timeWindow)
         ]);
     }
     public void execute(Database.BatchableContext bc, List<Account> scope) {
-        List<Account> payload = new List<Account>();
+        List<Map<String, Object>> payload = new List<Map<String, Object>>();
         
         for (Account acc : scope) {
-            // Create a new Account instance for the payload to map fields explicitly
+            // Create a map for the payload to handle formula fields like Age__c and explicit mapping
             // We map the local Client Id to External_Record_Id__c so the Server knows the source ID
-            Account accPayload = new Account(
-                External_Record_Id__c = acc.Id,
-                Name = acc.Name,
-                Phone = acc.Phone,
-                Type = acc.Type,
-                Industry = acc.Industry,
-                BillingStreet = acc.BillingStreet,
-                BillingCity = acc.BillingCity,
-                BillingState = acc.BillingState,
-                BillingPostalCode = acc.BillingPostalCode,
-                BillingCountry = acc.BillingCountry
-            );
+            Map<String, Object> accPayload = new Map<String, Object>();
+            accPayload.put('External_Record_Id__c', acc.Id);
+            accPayload.put('Salutation', acc.Salutation);
+            accPayload.put('FirstName', acc.FirstName);
+            accPayload.put('LastName', acc.LastName);
+            accPayload.put('PersonBirthdate', acc.PersonBirthdate);
+            accPayload.put('Age__c', acc.Age__c);
+            accPayload.put('PersonMobilePhone', acc.PersonMobilePhone);
+            accPayload.put('Phone', acc.Phone);
+            accPayload.put('PersonEmail', acc.PersonEmail);
+            accPayload.put('Login_Password__c', acc.Login_Password__c);
+            accPayload.put('PersonMailingStreet', acc.PersonMailingStreet);
+            accPayload.put('PersonMailingCity', acc.PersonMailingCity);
+            accPayload.put('PersonMailingState', acc.PersonMailingState);
+            accPayload.put('PersonMailingPostalCode', acc.PersonMailingPostalCode);
+            accPayload.put('PersonMailingCountry', acc.PersonMailingCountry);
+            accPayload.put('PersonOtherStreet', acc.PersonOtherStreet);
+            accPayload.put('PersonOtherCity', acc.PersonOtherCity);
+            accPayload.put('PersonOtherState', acc.PersonOtherState);
+            accPayload.put('PersonOtherPostalCode', acc.PersonOtherPostalCode);
+            accPayload.put('PersonOtherCountry', acc.PersonOtherCountry);
+
+            // If we have the Server's ID stored in External_Record_Id__c, send it as the Id
+            if (String.isNotBlank(acc.External_Record_Id__c)) {
+                accPayload.put('Id', acc.External_Record_Id__c);
+            }
             payload.add(accPayload);
         }
 
         if (payload.isEmpty()) return;
-
         HttpRequest req = new HttpRequest();
         req.setEndpoint('callout:Hospital_Server/services/apexrest/AccountService/');
         req.setMethod('POST');

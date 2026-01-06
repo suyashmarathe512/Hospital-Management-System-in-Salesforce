@@ -3,37 +3,67 @@ global with sharing class AccountService {
     @HttpPost
     global static Map<String, String> createAccounts() {
         RestRequest req = RestContext.request;
-        List<Account> accounts = (List<Account>) JSON.deserialize(req.requestBody.toString(), List<Account>.class);
+        // Deserialize as untyped to handle External_Record_Id__c which may not exist on Server Account object
+        List<Object> requestBody = (List<Object>) JSON.deserializeUntyped(req.requestBody.toString());
         Map<String, String> responseMap = new Map<String, String>();
-        if (accounts != null && !accounts.isEmpty()) {
-            Set<String> extIds = new Set<String>();
-            for (Account acc : accounts) {
-                if (String.isNotBlank(acc.External_Record_Id__c)) {
-                    extIds.add(acc.External_Record_Id__c);
+        if (requestBody != null && !requestBody.isEmpty()) {
+            List<Account> accountsToUpsert = new List<Account>();
+            
+            // Fetch Person Account Record Type Id
+            Id personAccountRTId = [SELECT 
+                                        Id
+                                    FROM
+                                        RecordType
+                                    WHERE
+                                        SObjectType = 'Account'
+                                    AND 
+                                        IsPersonType = TRUE 
+                                    LIMIT 1].Id;
+            List<String> clientIds = new List<String>();
+            for (Object item : requestBody) {
+                Map<String, Object> data = (Map<String, Object>) item;
+                Account acc = new Account();
+                // Map standard fields
+                if (data.containsKey('Id') && data.get('Id') != null) {
+                    acc.Id = (Id) data.get('Id');
+                }
+                acc.RecordTypeId = personAccountRTId;
+                acc.Salutation = (String) data.get('Salutation');
+                acc.FirstName = (String) data.get('FirstName');
+                acc.LastName = (String) data.get('LastName');
+                if (data.get('PersonBirthdate') != null) {
+                    acc.PersonBirthdate = Date.valueOf((String) data.get('PersonBirthdate'));
+                }
+                acc.PersonMobilePhone = (String) data.get('PersonMobilePhone');
+                acc.Phone = (String) data.get('Phone');
+                acc.PersonEmail = (String) data.get('PersonEmail');
+                acc.Login_Password__c = (String) data.get('Login_Password__c');
+                acc.PersonMailingStreet = (String) data.get('PersonMailingStreet');
+                acc.PersonMailingCity = (String) data.get('PersonMailingCity');
+                acc.PersonMailingState = (String) data.get('PersonMailingState');
+                acc.PersonMailingPostalCode = (String) data.get('PersonMailingPostalCode');
+                acc.PersonMailingCountry = (String) data.get('PersonMailingCountry');
+                acc.PersonOtherStreet = (String) data.get('PersonOtherStreet');
+                acc.PersonOtherCity = (String) data.get('PersonOtherCity');
+                acc.PersonOtherState = (String) data.get('PersonOtherState');
+                acc.PersonOtherPostalCode = (String) data.get('PersonOtherPostalCode');
+                acc.PersonOtherCountry = (String) data.get('PersonOtherCountry');
+                accountsToUpsert.add(acc);
+                // Store Client ID for response mapping
+                if (data.containsKey('External_Record_Id__c')) {
+                    clientIds.add((String) data.get('External_Record_Id__c'));
+                } else {
+                    clientIds.add(null);
                 }
             }
-            if (!extIds.isEmpty()) {
-                Map<String, Id> existingMap = new Map<String, Id>();
-                for (Account existing : [SELECT 
-                                            Id, External_Record_Id__c 
-                                        FROM
-                                            Account 
-                                        WHERE
-                                             External_Record_Id__c 
-                                        IN
-                                            :extIds]) {
-                    existingMap.put(existing.External_Record_Id__c, existing.Id);
-                }
-                for (Account acc : accounts) {
-                    if (String.isNotBlank(acc.External_Record_Id__c) && existingMap.containsKey(acc.External_Record_Id__c)) {
-                        acc.Id = existingMap.get(acc.External_Record_Id__c);
+            if (!accountsToUpsert.isEmpty()) {
+                upsert accountsToUpsert;
+                for (Integer i = 0; i < accountsToUpsert.size(); i++) {
+                    String clientId = clientIds[i];
+                    Id serverId = accountsToUpsert[i].Id;
+                    if (String.isNotBlank(clientId)) {
+                        responseMap.put(clientId, serverId);
                     }
-                }
-            }
-            upsert accounts;
-            for (Account acc : accounts) {
-                if (String.isNotBlank(acc.External_Record_Id__c)) {
-                    responseMap.put(acc.External_Record_Id__c, acc.Id);
                 }
             }
         }
