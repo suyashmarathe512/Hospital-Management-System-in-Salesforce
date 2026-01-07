@@ -1,0 +1,17 @@
+.container{
+    max-width:800px;
+    margin:0 auto;
+    padding-top:20px;
+}
+.header-gradient{
+    background:linear-gradient(45deg, #0070d2, #005fb2);
+    border-top-left-radius:4px;
+    border-top-right-radius:4px;
+}
+.patient-link{
+    font-weight:bold;
+    color:#0070d2;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+}

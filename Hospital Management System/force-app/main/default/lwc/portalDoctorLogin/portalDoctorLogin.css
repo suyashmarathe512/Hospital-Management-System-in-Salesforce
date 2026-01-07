@@ -1,0 +1,7 @@
+.login-container{
+    height:80vh;
+    background-color:#f3f3f3;
+}
+.login-card{
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
