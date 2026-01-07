@@ -5,14 +5,12 @@
                 <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
             </div>
         </template>
-
         <template if:true={error}>
             <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
                 <span class="slds-assistive-text">error</span>
                 <h2>{error}</h2>
             </div>
         </template>
-
         <template if:true={hasData}>
             <lightning-card title="My Profile" icon-name="standard:user">
                 <div class="slds-p-horizontal_medium">
@@ -50,7 +48,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Address Information Section -->
                     <div class="slds-section slds-is-open">
                         <h3 class="slds-section__title slds-theme_shade">
@@ -95,7 +92,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </lightning-card>
         </template>

@@ -1,3 +1,9 @@
+/*****************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @ClassName:   AppointmentSyncBatchScheduler
+ * @Description:  This Class belongs to client org.
+ *                This class is responsible for scheduling the batch class for every 15 minutes.
+ **************************************************************************************************************/
 public with sharing class AppointmentSyncBatchScheduler implements Schedulable {
     public void execute(SchedulableContext sc) {
         Database.executeBatch(new AppointmentSyncBatch(), 100);

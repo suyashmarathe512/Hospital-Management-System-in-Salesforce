@@ -1,147 +1,113 @@
-:host {
-    display: block;
-    width: 100%;
-    font-family: 'Salesforce Sans', Arial, sans-serif;
-    color: #080707;
+:host{
+    display:block;
+    width:100%;
+    font-family:'Salesforce Sans', Arial, sans-serif;
+    color:#080707;
 }
-
-.portal-container {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    width: 100%;
-    padding-top: 5%;
+.portal-container{
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    width:100%;
+    padding-top:5%;
 }
-
-.card {
-    background-color: #ffffff;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    transition: all 0.3s ease;
+.card{
+    background-color:#ffffff;
+    border-radius:0.5rem;
+    box-shadow:0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow:hidden;
+    transition:all 0.3s ease;
 }
-
-/* Login Card Specifics */
-.login-card {
-    width: 90%;
-    max-width: 400px; /* Fallback for very large screens */
-    padding: 5%;
+.login-card{
+    width:90%;
+    max-width:400px;
+    padding:5%;
 }
-
-/* Create Card Specifics */
-.create-card {
-    width: 95%;
-    max-width: 800px;
-    padding: 3%;
+.create-card{
+    width:95%;
+    max-width:800px;
+    padding:3%;
 }
-
-.header-section {
-    text-align: center;
-    margin-bottom: 5%;
-    border-bottom: 2px solid #f3f2f2;
-    padding-bottom: 3%;
+.header-section{
+    text-align:center;
+    margin-bottom:5%;
+    border-bottom:2px solid #f3f2f2;
+    padding-bottom:3%;
 }
-
-.hospital-title {
-    font-size: 1.5rem;
-    color: #0176D3; /* Salesforce Blue */
-    font-weight: 300;
-    margin-bottom: 1%;
+.hospital-title{
+    font-size:1.5rem;
+    color:#0176D3; 
+    font-weight:300;
+    margin-bottom:1%;
 }
-
-.subtitle {
-    font-size: 0.9rem;
-    color: #706e6b;
+.subtitle{
+    font-size:0.9rem;
+    color:#706e6b;
 }
-
-.form-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+.form-content{
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
 }
-
-.input-field {
-    width: 100%;
+.input-field{
+    width:100%;
 }
-
-.action-group {
-    margin-top: 5%;
-    text-align: center;
+.action-group{
+    margin-top:5%;
+    text-align:center;
 }
-
-.full-width-btn {
-    width: 100%;
-    --sds-c-button-brand-color-background: #0176D3;
+.full-width-btn{
+    width:100%;
+    --sds-c-button-brand-color-background:#0176D3;
 }
-
-.footer-link {
-    margin-top: 5%;
-    text-align: center;
-    font-size: 0.85rem;
+.footer-link{
+    margin-top:5%;
+    text-align:center;
+    font-size:0.85rem;
 }
-
-/* Grid System for Create Form using % */
-.row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    margin-bottom: 2%;
+.row{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    margin-bottom:2%;
 }
-
-.col {
-    width: 48%; /* Dynamic sizing */
+.col{
+    width:48%;
 }
-
-.col.full-width {
-    width: 100%;
+.col.full-width{
+    width:100%;
 }
-
-.section-header {
-    background-color: #f3f9fe;
-    color: #0176D3;
-    padding: 1%;
-    margin-top: 4%;
-    margin-bottom: 2%;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border-left: 4px solid #0176D3;
+.section-header{
+    background-color:#f3f9fe;
+    color:#0176D3;
+    padding:1%;
+    margin-top:4%;
+    margin-bottom:2%;
+    font-weight:600;
+    font-size:0.9rem;
+    border-left:4px solid #0176D3;
 }
-
-.footer-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 2%;
-    margin-top: 5%;
-    padding-top: 3%;
-    border-top: 1px solid #f3f2f2;
+.footer-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:2%;
+    margin-top:5%;
+    padding-top:3%;
+    border-top:1px solid #f3f2f2;
 }
-
-.error-banner {
-    background-color: #feb8ab;
-    color: #ba0517;
-    padding: 2%;
-    border-radius: 0.25rem;
-    text-align: center;
-    margin-bottom: 3%;
+.error-banner{
+    background-color:#feb8ab;
+    color:#ba0517;
+    padding:2%;
+    border-radius:0.25rem;
+    text-align:center;
+    margin-bottom:3%;
 }
-
-.success-banner {
-    background-color: #c2f5da;
-    color: #04844b;
-    padding: 2%;
-    border-radius: 0.25rem;
-    text-align: center;
-    margin-bottom: 3%;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 600px) {
-    .col {
-        width: 100%;
-        margin-bottom: 2%;
-    }
-    
-    .portal-container {
-        padding-top: 2%;
-    }
+.success-banner{
+    background-color:#c2f5da;
+    color:#04844b;
+    padding:2%;
+    border-radius:0.25rem;
+    text-align:center;
+    margin-bottom:3%;
 }

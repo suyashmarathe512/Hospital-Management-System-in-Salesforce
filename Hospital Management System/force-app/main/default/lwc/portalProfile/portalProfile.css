@@ -1,24 +1,21 @@
-.profile-wrapper {
-    background-color: #f3f2f2;
-    min-height: 100vh;
-    padding: 1rem;
+.profile-wrapper{
+    background-color:#f3f2f2;
+    min-height:100vh;
+    padding:1rem;
 }
-
-.spinner-container {
-    position: relative;
-    height: 200px;
+.spinner-container{
+    position:relative;
+    height:200px;
 }
-
-.field-value {
-    border: 1px solid #dddbda;
-    border-top: 0;
-    border-left: 0;
-    border-right: 0;
-    min-height: 1.5rem;
-    padding-bottom: 2px;
+.field-value{
+    border:1px solid #dddbda;
+    border-top:0;
+    border-left:0;
+    border-right:0;
+    min-height:1.5rem;
+    padding-bottom:2px;
 }
-
-.slds-section__title {
-    border-radius: 0.25rem;
-    margin-bottom: 0.5rem;
+.slds-section__title{
+    border-radius:0.25rem;
+    margin-bottom:0.5rem;
 }
