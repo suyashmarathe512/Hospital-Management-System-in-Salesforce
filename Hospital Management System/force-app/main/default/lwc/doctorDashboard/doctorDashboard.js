@@ -19,6 +19,7 @@ const COLUMNS=[
 export default class DoctorDashboard extends NavigationMixin(LightningElement){
     @track appointments=[];
     @track error;
+    @track isLoading = true;
     columns=COLUMNS;
     // Retrieve the email stored during the custom login process
     doctorEmail=sessionStorage.getItem('doctorEmail');
@@ -39,6 +40,7 @@ export default class DoctorDashboard extends NavigationMixin(LightningElement){
     }
     @wire(getTodayAppointments,{email:'$doctorEmail'})
     wiredAppointments({error,data}){
+        this.isLoading = false;
         if(data){
             this.appointments=data;
             this.error=undefined;
@@ -50,6 +52,6 @@ export default class DoctorDashboard extends NavigationMixin(LightningElement){
     }
     handleRowAction(event){
         const row=event.detail.row;
-        window.location.href='/DoctorsHealthXi/appoinmentviewer?recordId='+row.Id;
+        window.location.href='/DoctorsHealthXi/appointmentviewer?recordId='+row.Id;
     }
 }

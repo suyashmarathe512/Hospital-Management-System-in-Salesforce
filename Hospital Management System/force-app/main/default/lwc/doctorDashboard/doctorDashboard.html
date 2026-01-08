@@ -4,8 +4,12 @@
             <h1 class="slds-text-heading_medium">Today's Appointments</h1>
             <p class="slds-text-body_small slds-text-color_weak">{todayDate}</p>
         </div>
-        <div class="slds-p-horizontal_medium">
-            <template if:true={appointments}>
+        <div class="slds-p-horizontal_medium slds-is-relative" style="min-height: 100px;">
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading appointments..." size="medium"></lightning-spinner>
+            </template>
+
+            <template if:true={appointments.length}>
                 <lightning-datatable
                     key-field="Id"
                     data={appointments}
@@ -14,6 +18,11 @@
                     hide-checkbox-column="true"
                     resize-column-disabled="true">
                 </lightning-datatable>
+            </template>
+            <template if:false={isLoading}>
+                <template if:false={appointments.length}>
+                    <div class="slds-text-align_center slds-p-around_medium">No appointments scheduled for today.</div>
+                </template>
             </template>
             <template if:true={error}>
                 <div class="slds-text-color_error slds-p-around_medium">{errorMessage}</div>

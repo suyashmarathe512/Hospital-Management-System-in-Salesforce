@@ -34,6 +34,9 @@ export default class AppoinmentViewer extends LightningElement{
     }
     @wire(getRecord,{recordId:'$recordId',fields:FIELDS })
     appointment;
+    get isLoading(){
+        return !this.appointment || (!this.appointment.data && !this.appointment.error);
+    }
     get appointmentData(){return this.appointment.data; }
     get patientName(){return getFieldValue(this.appointment.data,PATIENT_NAME_FIELD);}
     get patientEmail(){return getFieldValue(this.appointment.data,PATIENT_EMAIL_FIELD);}
@@ -47,6 +50,6 @@ export default class AppoinmentViewer extends LightningElement{
         this.isModalOpen=false;
     }
     handleBack(){
-        window.location.href='/DoctorsHealthXi/doctorDashboard';
+        window.location.href='/DoctorsHealthXi/dashboard';
     }
 }
