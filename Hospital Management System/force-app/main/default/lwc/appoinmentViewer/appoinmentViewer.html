@@ -117,7 +117,7 @@
                                 <lightning-input type="number" label="Number of Visits" value={numberOfVisits} onchange={handleGenericChange} data-field="numberOfVisits"></lightning-input>
                             </div>
                             <div class="slds-col slds-size_1-of-3">
-                                <lightning-input type="number" formatter="currency" step="0.01" label="Visit Charges" value={visitCharges} onchange={handleGenericChange} data-field="visitCharges"></lightning-input>
+                                <lightning-input type="number" formatter="currency" step="0.01" label="Visit Charges" value={visitCharges} onchange={handleGenericChange} data-field="visitCharges" readonly placeholder="Calculated automatically"></lightning-input>
                             </div>
                             <div class="slds-col slds-size_1-of-3">
                                 <lightning-input type="date" label="Next Visit Date" value={nextVisitDate} onchange={handleGenericChange} data-field="nextVisitDate"></lightning-input>

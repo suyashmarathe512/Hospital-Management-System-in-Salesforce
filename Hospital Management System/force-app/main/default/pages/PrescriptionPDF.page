@@ -1,0 +1,79 @@
+<apex:page controller="PrescriptionPDFController" renderAs="pdf" applyBodyTag="false">
+    <head>
+        <style>
+            body { font-family: sans-serif; font-size: 12px; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+            .section { margin-bottom: 15px; }
+            .section-title { font-weight: bold; font-size: 14px; margin-bottom: 5px; background-color: #f2f2f2; padding: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+            th { background-color: #f8f8f8; }
+            .total-section { text-align: right; margin-top: 20px; font-size: 14px; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1 style="margin:0;">Hospital Management System</h1>
+            <h2 style="margin:5px 0;">Prescription &amp; Billing Summary</h2>
+            <p>Date: <apex:outputText value="{0,date,MM/dd/yyyy}"><apex:param value="{!consultation.Date_of_Visit__c}"/></apex:outputText></p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Patient Information</div>
+            <table style="border:none;">
+                <tr>
+                    <td style="border:none; width:50%;"><strong>Name:</strong> {!consultation.Patient__r.Name}</td>
+                    <td style="border:none;"><strong>Email:</strong> {!consultation.Patient__r.PersonEmail}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Doctor Information</div>
+            <p><strong>Doctor:</strong> {!consultation.Doctor__r.Name}</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Clinical Notes</div>
+            <p>{!prescription.Notes__c}</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Medications</div>
+            <apex:outputPanel rendered="{!medications.size > 0}">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Medicine Name</th>
+                            <th>Dosage</th>
+                            <th>Frequency</th>
+                            <th>Duration (Days)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <apex:repeat value="{!medications}" var="med">
+                            <tr>
+                                <td>{!med.Name}</td>
+                                <td>{!med.Dosage__c}</td>
+                                <td>{!med.Frequency__c}</td>
+                                <td>{!med.Duration_Days__c}</td>
+                            </tr>
+                        </apex:repeat>
+                    </tbody>
+                </table>
+            </apex:outputPanel>
+            <apex:outputPanel rendered="{!medications.size == 0}">
+                <p>No medications prescribed.</p>
+            </apex:outputPanel>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Billing Details</div>
+            <div class="total-section">
+                Consultation Charges: <apex:outputText value="{0, number, currency}"><apex:param value="{!consultation.Visit_Charges__c}"/></apex:outputText>
+                <br/>
+                Total Bill: <apex:outputText value="{0, number, currency}"><apex:param value="{!totalBill}"/></apex:outputText>
+            </div>
+        </div>
+    </body>
+</apex:page>

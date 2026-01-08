@@ -3,6 +3,7 @@ import{CurrentPageReference}from 'lightning/navigation';
 import{ShowToastEvent}from 'lightning/platformShowToastEvent';
 import getAppointmentDetails from '@salesforce/apex/AppointmentViewerController.getAppointmentDetails';
 import saveConsultation from '@salesforce/apex/AppointmentViewerController.saveConsultation';
+import getConsultationFee from '@salesforce/apex/AppointmentViewerController.getConsultationFee';
 export default class AppoinmentViewer extends LightningElement{
     @track recordId;
     @track isModalOpen=false;
@@ -33,7 +34,13 @@ export default class AppoinmentViewer extends LightningElement{
     get doctorName(){return this.appointment.data?.Doctor__r?.Name; }
     get doctorId(){return this.appointment.data?.Doctor__c; }
     get patientId(){return this.appointment.data?.Patient__c; }
-    get todayDate(){return new Date().toISOString().split('T')[0]; }
+    get todayDate(){
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
     openModal(){
         this.isModalOpen=true;
     }
@@ -57,6 +64,20 @@ export default class AppoinmentViewer extends LightningElement{
             frequency:'',
             duration:''
         }];
+        getConsultationFee({doctorId:this.doctorId,patientId:this.patientId,visitDate:this.todayDate})
+        .then(result=>{
+            this.visitCharges=result.fee;
+            if(result.message && (result.message.includes('Discount') || result.message.includes('Free'))){
+                this.dispatchEvent(new ShowToastEvent({
+                    title:'Fee Adjusted',
+                    message:result.message,
+                    variant:'info'
+                }));
+            }
+        })
+        .catch(error=>{
+            console.error('Error fetching fee:',error);
+        });
     }
     closeConsultationModal(){
         this.isConsultationModalOpen=false;
