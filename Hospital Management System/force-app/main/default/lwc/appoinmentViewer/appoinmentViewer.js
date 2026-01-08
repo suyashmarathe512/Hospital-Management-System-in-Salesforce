@@ -1,48 +1,39 @@
 import{LightningElement,wire,track} from 'lwc';
 import{CurrentPageReference}from 'lightning/navigation';
-import{getRecord,getFieldValue} from 'lightning/uiRecordApi';
-// Appointment Fields
-import APPT_NAME_FIELD from '@salesforce/schema/Appointment__c.Name';
-import APPT_DATE_FIELD from '@salesforce/schema/Appointment__c.Appointment_Date__c';
-import APPT_STATUS_FIELD from '@salesforce/schema/Appointment__c.Appointment_Status__c';
-import APPT_REASON_FIELD from '@salesforce/schema/Appointment__c.Reason_for_Visit__c';
-import PATIENT_NAME_FIELD from '@salesforce/schema/Appointment__c.Patient__r.Name';
-// Patient(Person Account) Fields fetched via Relationship
-import PATIENT_EMAIL_FIELD from '@salesforce/schema/Appointment__c.Patient__r.PersonEmail';
-import PATIENT_PHONE_FIELD from '@salesforce/schema/Appointment__c.Patient__r.Phone';
-import PATIENT_AGE_FIELD from '@salesforce/schema/Appointment__c.Patient__r.Age__c';
-import PATIENT_DOB_FIELD from '@salesforce/schema/Appointment__c.Patient__r.PersonBirthdate';
-const FIELDS=[
-    APPT_NAME_FIELD,
-    APPT_DATE_FIELD,
-    APPT_STATUS_FIELD,
-    APPT_REASON_FIELD,
-    PATIENT_NAME_FIELD,
-    PATIENT_EMAIL_FIELD,
-    PATIENT_PHONE_FIELD,
-    PATIENT_AGE_FIELD,
-    PATIENT_DOB_FIELD
-];
+import{ShowToastEvent}from 'lightning/platformShowToastEvent';
+import getAppointmentDetails from '@salesforce/apex/AppointmentViewerController.getAppointmentDetails';
+import saveConsultation from '@salesforce/apex/AppointmentViewerController.saveConsultation';
 export default class AppoinmentViewer extends LightningElement{
     @track recordId;
     @track isModalOpen=false;
+    @track isConsultationModalOpen=false;
+    @track medications=[];
+    @track consultationNotes='';
+    @track nextVisitDate='';
+    @track numberOfVisits='';
+    @track visitCharges='';
+    @track isSaving=false;
     @wire(CurrentPageReference)
     getStateParameters(currentPageReference){
         if(currentPageReference&&currentPageReference.state){
             this.recordId=currentPageReference.state.recordId;
         }
     }
-    @wire(getRecord,{recordId:'$recordId',fields:FIELDS })
+    @wire(getAppointmentDetails,{recordId:'$recordId'})
     appointment;
     get isLoading(){
         return !this.appointment || (!this.appointment.data && !this.appointment.error);
     }
     get appointmentData(){return this.appointment.data; }
-    get patientName(){return getFieldValue(this.appointment.data,PATIENT_NAME_FIELD);}
-    get patientEmail(){return getFieldValue(this.appointment.data,PATIENT_EMAIL_FIELD);}
-    get patientPhone(){return getFieldValue(this.appointment.data,PATIENT_PHONE_FIELD);}
-    get patientAge(){return getFieldValue(this.appointment.data,PATIENT_AGE_FIELD);}
-    get patientDob(){return getFieldValue(this.appointment.data,PATIENT_DOB_FIELD);}
+    get patientName(){return this.appointment.data?.Patient__r?.Name;}
+    get patientEmail(){return this.appointment.data?.Patient__r?.PersonEmail;}
+    get patientPhone(){return this.appointment.data?.Patient__r?.Phone;}
+    get patientAge(){return this.appointment.data?.Patient__r?.Age__c;}
+    get patientDob(){return this.appointment.data?.Patient__r?.PersonBirthdate;}
+    get doctorName(){return this.appointment.data?.Doctor__r?.Name; }
+    get doctorId(){return this.appointment.data?.Doctor__c; }
+    get patientId(){return this.appointment.data?.Patient__c; }
+    get todayDate(){return new Date().toISOString().split('T')[0]; }
     openModal(){
         this.isModalOpen=true;
     }
@@ -51,5 +42,95 @@ export default class AppoinmentViewer extends LightningElement{
     }
     handleBack(){
         window.location.href='/DoctorsHealthXi/dashboard';
+    }
+    // Consultation & Prescription Logic
+    openConsultationModal(){
+        this.isConsultationModalOpen=true;
+        this.consultationNotes='';
+        this.nextVisitDate='';
+        this.numberOfVisits='';
+        this.visitCharges='';
+        this.medications=[{
+            id:Date.now(),
+            name:'',
+            dosage:'',
+            frequency:'',
+            duration:''
+        }];
+    }
+    closeConsultationModal(){
+        this.isConsultationModalOpen=false;
+    }
+    handleNotesChange(event){
+        this.consultationNotes=event.target.value;
+    }
+    handleGenericChange(event){
+        const field=event.target.dataset.field;
+        this[field]=event.target.value;
+    }
+    addMedication(){
+        this.medications=[...this.medications,{
+            id:Date.now(),
+            name:'',
+            dosage:'',
+            frequency:'',
+            duration:''
+        }];
+    }
+    removeMedication(event){
+        const index=event.target.dataset.index;
+        this.medications=this.medications.filter((_, i) => i != index);
+    }
+    handleMedicationChange(event){
+        const{index, field }=event.target.dataset;
+        const updatedMedications=[...this.medications];
+        updatedMedications[index]={...updatedMedications[index], [field]:event.target.value };
+        this.medications=updatedMedications;
+    }
+    handleSaveConsultation(){
+        // Optimization:Filter out empty medication rows
+        const validMedications=this.medications.filter(med => med.name && med.name.trim().length > 0);
+        // Optimization:Validation to ensure meaningful data is saved
+        if (!this.consultationNotes && validMedications.length === 0){
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Validation Error',
+                message:'Please enter clinical notes or at least one medication.',
+                variant:'warning'
+            }));
+            return;
+        }
+        this.isSaving=true;
+        const consultationData={
+            doctorId:this.doctorId,
+            patientId:this.patientId,
+            visitDate:this.todayDate,
+            notes:this.consultationNotes,
+            nextVisitDate:this.nextVisitDate,
+            numberOfVisits:this.numberOfVisits,
+            visitCharges:this.visitCharges,
+            appointmentId:this.recordId
+        };
+        saveConsultation({
+            consultationData:consultationData, 
+            medications:validMedications 
+        })
+        .then(() =>{
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Success',
+                message:'Consultation and Prescription saved successfully.',
+                variant:'success'
+            }));
+            this.closeConsultationModal();
+        })
+        .catch(error =>{
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Error',
+                message:error.body ? error.body.message :'Error saving record',
+                variant:'error'
+            }));
+        })
+        .finally(() =>{
+            this.isSaving=false;
+        });
     }
 }

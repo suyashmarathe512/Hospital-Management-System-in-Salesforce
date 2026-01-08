@@ -2,6 +2,7 @@
     <div class="container">
         <lightning-card>
             <div slot="actions">
+                <lightning-button label="Start Consultation" variant="brand" icon-name="standard:log_a_call" onclick={openConsultationModal} class="slds-m-right_small"></lightning-button>
                 <lightning-button label="Back to Dashboard" icon-name="utility:back" onclick={handleBack}></lightning-button>
             </div>
             <div slot="title" class="header-gradient slds-p-around_medium">
@@ -15,13 +16,13 @@
                     <div class="slds-grid slds-wrap slds-gutters">
                         <!-- Appointment Info -->
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_medium">
-                            <lightning-input label="Appointment ID" value={appointmentData.fields.Name.value} readonly></lightning-input>
+                            <lightning-input label="Appointment ID" value={appointmentData.Name} readonly></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_medium">
-                            <lightning-input label="Date" value={appointmentData.fields.Appointment_Date__c.value} readonly></lightning-input>
+                            <lightning-input label="Date" value={appointmentData.Appointment_Date__c} readonly></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_medium">
-                            <lightning-input label="Status" value={appointmentData.fields.Appointment_Status__c.value} readonly></lightning-input>
+                            <lightning-input label="Status" value={appointmentData.Appointment_Status__c} readonly></lightning-input>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-p-bottom_medium">
                             <label class="slds-form-element__label">Patient Info</label>
@@ -33,7 +34,7 @@
                             </div>
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-p-bottom_medium">
-                            <lightning-textarea label="Reason for Visit" value={appointmentData.fields.Reason_for_Visit__c.value} readonly></lightning-textarea>
+                            <lightning-textarea label="Reason for Visit" value={appointmentData.Reason_for_Visit__c} readonly></lightning-textarea>
                         </div>
                     </div>
                 </template>
@@ -80,6 +81,85 @@
                 </div>
                 <footer class="slds-modal__footer">
                     <button class="slds-button slds-button_neutral" onclick={closeModal}>Close</button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+    <!-- New Consultation Modal -->
+    <template if:true={isConsultationModalOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header header-gradient">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeConsultationModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse" size="small"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-text-heading_medium slds-text-color_inverse">New Consultation & Prescription</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <!-- Consultation Details -->
+                    <div class="slds-box slds-theme_shade slds-m-bottom_medium">
+                        <h3 class="slds-text-heading_small slds-m-bottom_small">Consultation Details</h3>
+                        <div class="slds-grid slds-gutters">
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input label="Doctor" value={doctorName} readonly></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input label="Patient" value={patientName} readonly></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input type="date" label="Date of Visit" value={todayDate} readonly></lightning-input>
+                            </div>
+                        </div>
+                        <div class="slds-grid slds-gutters slds-m-top_small">
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input type="number" label="Number of Visits" value={numberOfVisits} onchange={handleGenericChange} data-field="numberOfVisits"></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input type="number" formatter="currency" step="0.01" label="Visit Charges" value={visitCharges} onchange={handleGenericChange} data-field="visitCharges"></lightning-input>
+                            </div>
+                            <div class="slds-col slds-size_1-of-3">
+                                <lightning-input type="date" label="Next Visit Date" value={nextVisitDate} onchange={handleGenericChange} data-field="nextVisitDate"></lightning-input>
+                            </div>
+                        </div>
+                        <div class="slds-m-top_small">
+                            <lightning-textarea label="Clinical Notes / Diagnosis" value={consultationNotes} onchange={handleNotesChange} placeholder="Enter diagnosis and clinical observations here..."></lightning-textarea>
+                        </div>
+                    </div>
+                    <!-- Prescription Section -->
+                    <div class="slds-box slds-theme_default">
+                        <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                            <h3 class="slds-text-heading_small">Prescription (Medications)</h3>
+                            <lightning-button label="Add Medication" icon-name="utility:add" onclick={addMedication} variant="neutral"></lightning-button>
+                        </div>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th class="" scope="col"><div class="slds-truncate" title="Medicine Name">Medicine Name</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Dosage">Dosage</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Frequency">Frequency</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Duration">Duration</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Action">Action</div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={medications} for:item="med" for:index="index">
+                                    <tr key={med.id}>
+                                        <td><lightning-input variant="label-hidden" value={med.name} data-index={index} data-field="name" onchange={handleMedicationChange} placeholder="e.g. Paracetamol"></lightning-input></td>
+                                        <td><lightning-input variant="label-hidden" value={med.dosage} data-index={index} data-field="dosage" onchange={handleMedicationChange} placeholder="e.g. 500mg"></lightning-input></td>
+                                        <td><lightning-input variant="label-hidden" value={med.frequency} data-index={index} data-field="frequency" onchange={handleMedicationChange} placeholder="e.g. 1-0-1"></lightning-input></td>
+                                        <td><lightning-input variant="label-hidden" value={med.duration} data-index={index} data-field="duration" onchange={handleMedicationChange} placeholder="e.g. 5 Days"></lightning-input></td>
+                                        <td><lightning-button-icon icon-name="utility:delete" variant="bare" alternative-text="Remove" title="Remove" data-index={index} onclick={removeMedication} class="slds-text-color_error"></lightning-button-icon></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={closeConsultationModal} class="slds-m-right_small"></lightning-button>
+                    <lightning-button label="Save Consultation" variant="brand" onclick={handleSaveConsultation} disabled={isSaving}></lightning-button>
                 </footer>
             </div>
         </section>

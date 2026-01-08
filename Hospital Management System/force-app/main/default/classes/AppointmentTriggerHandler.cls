@@ -152,6 +152,8 @@ public with sharing class AppointmentTriggerHandler{
 /*****************************************************************************************************
  * @Author:       CRM Team Innovation
  * @MethodName:   promoteQueuedAppointments
+ * @param1:     List<Appointment__c> newAppointments
+ * @param2:     Map<Id,Appointment__c> oldMap
  * @Description:  Promotes queued appointments when a slot opens up due to cancellation.
  **************************************************************************************************************/
     private static void promoteQueuedAppointments(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
@@ -293,6 +295,13 @@ public with sharing class AppointmentTriggerHandler{
             }
         }
     }
+/********************************************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @MethodName:   isNotificationTrigger
+ * @param1:     Appointment__c newAppt
+ * @param2:     Appointment__c oldAppt
+ * @Description:  Determines if notification emails need to be sent.
+ ***************************************************************************************************************************/
     // Helper to check if processing is needed
     private static Boolean isNotificationTrigger(Appointment__c newAppt,Appointment__c oldAppt){
         // Insert
@@ -305,6 +314,15 @@ public with sharing class AppointmentTriggerHandler{
         if(newAppt.Appointment_Date__c!=oldAppt.Appointment_Date__c) return true;
         return false;
     }
+/********************************************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @MethodName:   generatePatientEmail
+ * @param1:     Appointment__c newAppt
+ * @param2:     Appointment__c oldAppt
+ * @param3:     Account patient
+ * @param4:     Doctor__c doctor
+ * @Description:  Generates email for patient based on appointment status change.
+ *************************************************************************************************************************/
     // Helper for Patient Email Logic
     private static Messaging.SingleEmailMessage generatePatientEmail(Appointment__c newAppt,Appointment__c oldAppt,Account patient,Doctor__c doctor){
         String subject='';
@@ -313,11 +331,9 @@ public with sharing class AppointmentTriggerHandler{
         String oldStatus=(oldAppt!=null)?oldAppt.Appointment_Status__c:'';
         Boolean isInsert=(oldAppt==null);
         Boolean isDetailChange=false;
-        
-        if(!isInsert && (newAppt.Doctor__c!=oldAppt.Doctor__c || newAppt.Appointment_Date__c!=oldAppt.Appointment_Date__c)){
+        if(!isInsert&&(newAppt.Doctor__c!=oldAppt.Doctor__c||newAppt.Appointment_Date__c!=oldAppt.Appointment_Date__c)){
             isDetailChange=true;
         }
-
         // Determine Scenario
         if(status=='Cancelled'&&(isInsert||oldStatus!='Cancelled')){
             subject='Appointment Cancelled';
@@ -331,7 +347,7 @@ public with sharing class AppointmentTriggerHandler{
         }else if(isInsert){
             subject='Appointment Request Received';
             bodyHeader='Your appointment request has been received.';
-        }else if(isDetailChange && (status=='Confirmed' || status=='Accepted' || status=='Scheduled')){
+        }else if(isDetailChange&&(status=='Confirmed'||status=='Accepted'||status=='Scheduled')){
             subject='Appointment Details Updated';
             bodyHeader='Your appointment details have been updated.';
         }else{
@@ -339,6 +355,15 @@ public with sharing class AppointmentTriggerHandler{
         }
         return constructEmail(patient.PersonEmail,subject,bodyHeader,newAppt,patient.Name,(doctor!=null?doctor.Name:'Not Assigned'));
     }
+/*******************************************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @MethodName:   generateDoctorEmail
+ * @param1:     Appointment__c newAppt
+ * @param2:     Appointment__c oldAppt
+ * @param3:     Doctor__c doctor
+ * @param4:     Account patient
+ * @Description:  Generates email for doctor based on appointment status change.
+ **********************************************************************************************************************************/
     // Helper for Doctor Email Logic
     private static Messaging.SingleEmailMessage generateDoctorEmail(Appointment__c newAppt,Appointment__c oldAppt,Doctor__c doctor,Account patient){
         String subject='';
@@ -361,6 +386,17 @@ public with sharing class AppointmentTriggerHandler{
         }
         return constructEmail(doctor.Email__c,subject,bodyHeader,newAppt,doctor.Name,(patient!=null?patient.Name:'N/A'));
     }
+/***************************************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @MethodName:   constructEmail
+ * @param1:     String toAddress
+ * @param2:     String subject
+ * @param3:     String headerMsg
+ * @param4:     Appointment__c appt
+ * @param5:     String recipientName
+ * @param6:     String otherPartyName
+ * @Description:  Generic Email Constructor
+ ***********************************************************************************************************************/
     // Generic Email Constructor
     private static Messaging.SingleEmailMessage constructEmail(String toAddress,String subject,String headerMsg,Appointment__c appt,String recipientName,String otherPartyName){
         Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
