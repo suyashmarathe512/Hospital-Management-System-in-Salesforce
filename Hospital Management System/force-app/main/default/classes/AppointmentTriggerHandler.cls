@@ -27,6 +27,7 @@ public with sharing class AppointmentTriggerHandler{
  * @Description:  This method is responsible for calling the sendAssignmentNotifications method.
  **************************************************************************************************************/
     public static void onAfterUpdate(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
+        promoteQueuedAppointments(newAppointments,oldMap);
         sendAssignmentNotifications(newAppointments,oldMap);
     }
 /*****************************************************************************************************
@@ -150,6 +151,72 @@ public with sharing class AppointmentTriggerHandler{
     }
 /*****************************************************************************************************
  * @Author:       CRM Team Innovation
+ * @MethodName:   promoteQueuedAppointments
+ * @Description:  Promotes queued appointments when a slot opens up due to cancellation.
+ **************************************************************************************************************/
+    private static void promoteQueuedAppointments(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
+        Set<Id> doctorIds=new Set<Id>();
+        Set<Date> dates=new Set<Date>();
+        Map<String,Integer> openSlotsMap=new Map<String,Integer>();
+
+        for(Appointment__c appt:newAppointments){
+            Appointment__c oldAppt=oldMap.get(appt.Id);
+            // Check if appointment is cancelled
+            if(appt.Appointment_Status__c=='Cancelled'&&oldAppt.Appointment_Status__c!='Cancelled'
+               &&appt.Doctor__c!=null&&appt.Appointment_Date__c!=null){
+                doctorIds.add(appt.Doctor__c);
+                dates.add(appt.Appointment_Date__c);
+                
+                // Track open slots per Doctor-Date combination
+                String key=appt.Doctor__c+'_'+appt.Appointment_Date__c;
+                if(!openSlotsMap.containsKey(key)){
+                    openSlotsMap.put(key,0);
+                }
+                openSlotsMap.put(key,openSlotsMap.get(key)+1);
+            }
+        }
+        if(openSlotsMap.isEmpty()) return;
+        // Find queued appointments for the affected doctors and dates
+        List<Appointment__c> queuedAppts=[SELECT
+                                            Id,Doctor__c,Appointment_Date__c
+                                        FROM 
+                                            Appointment__c 
+                                        WHERE
+                                            Appointment_Status__c='Queued' 
+                                        AND
+                                            Doctor__c IN :doctorIds 
+                                        AND
+                                            Appointment_Date__c IN :dates 
+                                        ORDER BY
+                                          CreatedDate ASC];
+        
+        Map<String,List<Appointment__c>> queuedMap=new Map<String,List<Appointment__c>>();
+        for(Appointment__c qa:queuedAppts){
+            String key=qa.Doctor__c+'_'+qa.Appointment_Date__c;
+            if(!queuedMap.containsKey(key)){
+                queuedMap.put(key,new List<Appointment__c>());
+            }
+            queuedMap.get(key).add(qa);
+        }
+        List<Appointment__c> toPromote=new List<Appointment__c>();
+        for(String key:openSlotsMap.keySet()){
+            if(queuedMap.containsKey(key)){
+                List<Appointment__c> candidates=queuedMap.get(key);
+                Integer slots=openSlotsMap.get(key);
+                // Promote the next available queued appointments up to the number of open slots
+                for(Integer i=0;i<slots&&i<candidates.size();i++){
+                    Appointment__c prom=candidates[i];
+                    prom.Appointment_Status__c='Confirmed';
+                    toPromote.add(prom);
+                }
+            }
+        }
+        if(!toPromote.isEmpty()){
+            update toPromote;
+        }
+    }
+/*****************************************************************************************************
+ * @Author:       CRM Team Innovation
  * @MethodName:   sendAssignmentNotifications
  * @param1:     List<Appointment__c> newAppointments
  * @param2:     Map<Id,Appointment__c> oldMap
@@ -157,128 +224,161 @@ public with sharing class AppointmentTriggerHandler{
  *                upon appointment confirmation or significant updates(date/doctor changes).
  **************************************************************************************************************/
     private static void sendAssignmentNotifications(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
-        Set<Id> doctorIds=new Set<Id>();
         Set<Id> patientIds=new Set<Id>();
-        List<Appointment__c> doctorNotificationAppts=new List<Appointment__c>();
-        List<Appointment__c> patientNotificationAppts=new List<Appointment__c>();
+        Set<Id> doctorIds=new Set<Id>();
+        List<Appointment__c> appointmentsToProcess=new List<Appointment__c>();
+        // 1. Identify appointments requiring notifications
         for(Appointment__c appt:newAppointments){
-            // 1. Doctor Notification Logic(Assignment)
-            if(appt.Doctor__c!=null){
-                Boolean isAssigned=false;
-                if(oldMap==null){
-                    isAssigned=true;
-                }else{
-                    Appointment__c oldAppt=oldMap.get(appt.Id);
-                    if(appt.Doctor__c!=oldAppt.Doctor__c){
-                        isAssigned=true;
-                    }
-                }
-                if(isAssigned){
-                    doctorIds.add(appt.Doctor__c);
-                    if(appt.Patient__c!=null) patientIds.add(appt.Patient__c);
-                    doctorNotificationAppts.add(appt);
+            Appointment__c oldAppt=(oldMap!=null)?oldMap.get(appt.Id):null;
+            // Check if any relevant change occurred
+            if(isNotificationTrigger(appt,oldAppt)){
+                appointmentsToProcess.add(appt);
+                if(appt.Patient__c!=null) patientIds.add(appt.Patient__c);
+                if(appt.Doctor__c!=null) doctorIds.add(appt.Doctor__c);
+            }
+        }
+        if(appointmentsToProcess.isEmpty()){
+            return;
+        }
+        // 2. Query Recipient Data
+        Map<Id,Account> patientMap=new Map<Id,Account>();
+        if(!patientIds.isEmpty()){
+            patientMap=new Map<Id,Account>([SELECT
+                                                Id,Name,PersonEmail
+                                            FROM
+                                                Account
+                                            WHERE
+                                                Id
+                                            IN
+                                                :patientIds]);
+        }
+        Map<Id,Doctor__c> doctorMap=new Map<Id,Doctor__c>();
+        if(!doctorIds.isEmpty()){
+            doctorMap=new Map<Id,Doctor__c>([SELECT
+                                                Id,Name,Email__c
+                                            FROM
+                                                Doctor__c
+                                            WHERE
+                                                Id
+                                            IN
+                                                :doctorIds]);
+        }
+        List<Messaging.SingleEmailMessage> emailsToSend=new List<Messaging.SingleEmailMessage>();
+        // 3. Generate Emails
+        for(Appointment__c appt:appointmentsToProcess){
+            Appointment__c oldAppt=(oldMap!=null)?oldMap.get(appt.Id):null;
+            Account patient=patientMap.get(appt.Patient__c);
+            Doctor__c doctor=doctorMap.get(appt.Doctor__c);
+            // Patient Notifications
+            if(patient!=null&&String.isNotBlank(patient.PersonEmail)){
+                Messaging.SingleEmailMessage patientEmail=generatePatientEmail(appt,oldAppt,patient,doctor);
+                if(patientEmail!=null){
+                    emailsToSend.add(patientEmail);
                 }
             }
-            // 2. Patient Notification Logic(Confirmation)
-            if(appt.Patient__c!=null&&appt.Appointment_Status__c=='Confirmed'){
-                Boolean isConfirmed=false;
-                if(oldMap==null){
-                    isConfirmed=true;
-                }else{
-                    Appointment__c oldAppt=oldMap.get(appt.Id);
-                    // Notify if status changed to Confirmed,or if Confirmed and Doctor/Date changed
-                    if(appt.Appointment_Status__c!=oldAppt.Appointment_Status__c||
-                        appt.Doctor__c!=oldAppt.Doctor__c||
-                        appt.Appointment_Date__c!=oldAppt.Appointment_Date__c){
-                        isConfirmed=true;
-                    }
-                }
-                if(isConfirmed){
-                    patientIds.add(appt.Patient__c);
-                    if(appt.Doctor__c!=null) doctorIds.add(appt.Doctor__c);
-                    patientNotificationAppts.add(appt);
+            // Doctor Notifications
+            if(doctor!=null&&String.isNotBlank(doctor.Email__c)){
+                Messaging.SingleEmailMessage doctorEmail=generateDoctorEmail(appt,oldAppt,doctor,patient);
+                if(doctorEmail!=null){
+                    emailsToSend.add(doctorEmail);
                 }
             }
         }
-        if(!doctorNotificationAppts.isEmpty()||!patientNotificationAppts.isEmpty()){
-            Map<Id,Doctor__c> doctorsMap=new Map<Id,Doctor__c>(
-                [SELECT 
-                    Id,Name,Email__c
-                FROM
-                    Doctor__c
-                WHERE
-                    Id IN :doctorIds]
-            );
-            Map<Id,Account> patientsMap=new Map<Id,Account>();
-            if(!patientIds.isEmpty()){
-                patientsMap=new Map<Id,Account>([SELECT
-                                                        Id,Name,PersonEmail
-                                                    FROM
-                                                        Account 
-                                                    WHERE
-                                                        Id 
-                                                    IN :patientIds]);
-            }
-            List<Messaging.SingleEmailMessage> emails=new List<Messaging.SingleEmailMessage>();
-            // Generate Doctor Emails
-            for(Appointment__c appt:doctorNotificationAppts){
-                Doctor__c doc=doctorsMap.get(appt.Doctor__c);
-                if(doc!=null&&String.isNotBlank(doc.Email__c)){
-                    String patientName=(appt.Patient__c!=null&&patientsMap.containsKey(appt.Patient__c)) 
-                                        ?patientsMap.get(appt.Patient__c).Name 
-                                        :'N/A';
-                    Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
-                    mail.setToAddresses(new List<String>{doc.Email__c});
-                    mail.setSubject('New Appointment Assigned');
-                    String body='<html><body style="font-family: Arial,sans-serif;">';
-                    body+='<h2 style="color: #2c3e50;">New Appointment Assigned</h2>';
-                    body+='<p>Dear Dr. '+doc.Name+',</p>';
-                    body+='<p>You have been assigned a new appointment. Please find the details below:</p>';
-                    body+='<table style="border-collapse: collapse; width: 100%; max-width: 600px;">';
-                    body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Patient Name</strong></td><td style="padding: 10px; border: 1px solid #ddd;">'+patientName+'</td></tr>';
-                    body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Appointment_Date__c!=null?String.valueOf(appt.Appointment_Date__c):'')+'</td></tr>';
-                    body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Status</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Appointment_Status__c!=null?appt.Appointment_Status__c:'')+'</td></tr>';
-                    body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Reason for Visit</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Reason_for_Visit__c!=null?appt.Reason_for_Visit__c:'N/A')+'</td></tr>';
-                    body+='</table>';
-                    body+='<br/><p>Regards,<br/><strong>Hospital Management System</strong></p>';
-                    body+='</body></html>';
-                    mail.setHtmlBody(body);
-                    emails.add(mail);
-                }
-            }
-            // Generate Patient Emails
-            for(Appointment__c appt:patientNotificationAppts){
-                Account patient=patientsMap.get(appt.Patient__c);
-                if(patient!=null&&String.isNotBlank(patient.PersonEmail)){
-                    String doctorName=(appt.Doctor__c!=null&&doctorsMap.containsKey(appt.Doctor__c)) 
-                                    ?doctorsMap.get(appt.Doctor__c).Name 
-                                    :'Not Assigned';
-                    Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
-                    mail.setToAddresses(new List<String>{patient.PersonEmail});
-                    mail.setSubject('Appointment Confirmed');
-                    String body='<html><body style="font-family: Arial,sans-serif;">';
-                    body+='<h2 style="color: #2c3e50;">Appointment Confirmed</h2>';
-                    body+='<p>Dear '+patient.Name+',</p>';
-                    body+='<p>Your appointment has been confirmed. Please find the details below:</p>';
-                    body+='<table style="border-collapse: collapse; width: 100%; max-width: 600px;">';
-                    body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Doctor</strong></td><td style="padding: 10px; border: 1px solid #ddd;">Dr. '+doctorName+'</td></tr>';
-                    body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Appointment_Date__c!=null?String.valueOf(appt.Appointment_Date__c):'')+'</td></tr>';
-                    body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Status</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Appointment_Status__c!=null?appt.Appointment_Status__c:'')+'</td></tr>';
-                    body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Reason for Visit</strong></td><td style="padding: 10px; border: 1px solid #ddd;">' +(appt.Reason_for_Visit__c!=null?appt.Reason_for_Visit__c:'N/A')+'</td></tr>';
-                    body+='</table>';
-                    body+='<br/><p>Regards,<br/><strong>Hospital Management System</strong></p>';
-                    body+='</body></html>';
-                    mail.setHtmlBody(body);
-                    emails.add(mail);
-                }
-            }
-            if(!emails.isEmpty()){
-                try{
-                    Messaging.sendEmail(emails);
-                }catch(Exception e){
-                    System.debug('Error sending emails: '+e.getMessage());
-                }
+        // 4. Send Emails
+        if(!emailsToSend.isEmpty()){
+            try{
+                Messaging.sendEmail(emailsToSend);
+            }catch(Exception e){
+                System.debug('Error sending notification emails: '+e.getMessage());
             }
         }
+    }
+    // Helper to check if processing is needed
+    private static Boolean isNotificationTrigger(Appointment__c newAppt,Appointment__c oldAppt){
+        // Insert
+        if(oldAppt==null) return true;
+        // Status Change
+        if(newAppt.Appointment_Status__c!=oldAppt.Appointment_Status__c) return true;
+        // Doctor Assignment Change
+        if(newAppt.Doctor__c!=oldAppt.Doctor__c) return true;
+        // Date Change
+        if(newAppt.Appointment_Date__c!=oldAppt.Appointment_Date__c) return true;
+        return false;
+    }
+    // Helper for Patient Email Logic
+    private static Messaging.SingleEmailMessage generatePatientEmail(Appointment__c newAppt,Appointment__c oldAppt,Account patient,Doctor__c doctor){
+        String subject='';
+        String bodyHeader='';
+        String status=newAppt.Appointment_Status__c;
+        String oldStatus=(oldAppt!=null)?oldAppt.Appointment_Status__c:'';
+        Boolean isInsert=(oldAppt==null);
+        Boolean isDetailChange=false;
+        
+        if(!isInsert && (newAppt.Doctor__c!=oldAppt.Doctor__c || newAppt.Appointment_Date__c!=oldAppt.Appointment_Date__c)){
+            isDetailChange=true;
+        }
+
+        // Determine Scenario
+        if(status=='Cancelled'&&(isInsert||oldStatus!='Cancelled')){
+            subject='Appointment Cancelled';
+            bodyHeader='Your appointment has been cancelled.';
+        }else if(status=='Confirmed'&&(isInsert||oldStatus!='Confirmed')){
+            subject='Appointment Confirmed';
+            bodyHeader='Your appointment has been confirmed.';
+        }else if(status=='Accepted'&&(isInsert||oldStatus!='Accepted')){
+            subject='Appointment Accepted';
+            bodyHeader='Your appointment has been accepted.';
+        }else if(isInsert){
+            subject='Appointment Request Received';
+            bodyHeader='Your appointment request has been received.';
+        }else if(isDetailChange && (status=='Confirmed' || status=='Accepted' || status=='Scheduled')){
+            subject='Appointment Details Updated';
+            bodyHeader='Your appointment details have been updated.';
+        }else{
+            return null; // No relevant status change for patient
+        }
+        return constructEmail(patient.PersonEmail,subject,bodyHeader,newAppt,patient.Name,(doctor!=null?doctor.Name:'Not Assigned'));
+    }
+    // Helper for Doctor Email Logic
+    private static Messaging.SingleEmailMessage generateDoctorEmail(Appointment__c newAppt,Appointment__c oldAppt,Doctor__c doctor,Account patient){
+        String subject='';
+        String bodyHeader='';
+        Boolean isInsert=(oldAppt==null);
+        Id oldDoctorId=(oldAppt!=null)?oldAppt.Doctor__c:null;
+        // 1. Assignment (Insert with Doctor OR Update where Doctor changed)
+        if((isInsert&&newAppt.Doctor__c!=null)
+            ||(!isInsert&&newAppt.Doctor__c!=oldDoctorId&&newAppt.Doctor__c!=null)
+            ||(!isInsert&&oldAppt.Appointment_Status__c=='Queued'&&newAppt.Appointment_Status__c=='Confirmed')){
+            subject='New Appointment Assigned';
+            bodyHeader='You have been assigned a new appointment.';
+        } 
+        // 2. Cancellation (Status changed to Cancelled)
+        else if(!isInsert&&newAppt.Appointment_Status__c=='Cancelled'&&oldAppt.Appointment_Status__c!='Cancelled'){
+            subject='Appointment Cancelled';
+            bodyHeader='An appointment assigned to you has been cancelled.';
+        }else{
+            return null;
+        }
+        return constructEmail(doctor.Email__c,subject,bodyHeader,newAppt,doctor.Name,(patient!=null?patient.Name:'N/A'));
+    }
+    // Generic Email Constructor
+    private static Messaging.SingleEmailMessage constructEmail(String toAddress,String subject,String headerMsg,Appointment__c appt,String recipientName,String otherPartyName){
+        Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
+        mail.setToAddresses(new List<String>{toAddress});
+        mail.setSubject(subject);
+        String body='<html><body style="font-family: Arial,sans-serif;">';
+        body+='<h2 style="color: #2c3e50;">'+subject+'</h2>';
+        body+='<p>Dear '+recipientName+',</p>';
+        body+='<p>'+headerMsg+' Please find the details below:</p>';
+        body+='<table style="border-collapse: collapse; width: 100%; max-width: 600px;">';
+        body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Related Party</strong></td><td style="padding: 10px; border: 1px solid #ddd;">'+otherPartyName+'</td></tr>';
+        body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Date</strong></td><td style="padding: 10px; border: 1px solid #ddd;">'+(appt.Appointment_Date__c!=null?String.valueOf(appt.Appointment_Date__c):'')+'</td></tr>';
+        body+='<tr style="background-color: #f2f2f2;"><td style="padding: 10px; border: 1px solid #ddd;"><strong>Status</strong></td><td style="padding: 10px; border: 1px solid #ddd;">'+(appt.Appointment_Status__c!=null?appt.Appointment_Status__c:'')+'</td></tr>';
+        body+='<tr><td style="padding: 10px; border: 1px solid #ddd;"><strong>Reason for Visit</strong></td><td style="padding: 10px; border: 1px solid #ddd;">'+(appt.Reason_for_Visit__c!=null?appt.Reason_for_Visit__c:'N/A')+'</td></tr>';
+        body+='</table>';
+        body+='<br/><p>Regards,<br/><strong>Hospital Management System</strong></p>';
+        body+='</body></html>';
+        mail.setHtmlBody(body);
+        return mail;
     }
 }

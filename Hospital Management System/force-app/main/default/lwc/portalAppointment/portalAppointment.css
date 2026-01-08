@@ -1,0 +1,23 @@
+.container-card{
+    background:#ffffff;
+    border-radius:8px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    border:1px solid #e5e5e5;
+    overflow:hidden;
+}
+.header-panel{
+    background-color:#f8f9fa;
+    padding:16px;
+    border-bottom:1px solid #e5e5e5;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.title-text{
+    font-size:1.25rem;
+    font-weight:600;
+    color:#1a1b1e;
+}
+.body-panel{
+    padding:16px;
+}

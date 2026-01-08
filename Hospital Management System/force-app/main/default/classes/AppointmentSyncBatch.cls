@@ -13,7 +13,7 @@ public with sharing class AppointmentSyncBatch implements Database.Batchable<SOb
  **************************************************************************************************************/
     public void execute(SchedulableContext sc){
         // Execute batch with a manageable chunk size for callouts
-        Database.executeBatch(new AppointmentSyncBatch(),100);
+       
     }
 /*****************************************************************************************************
  * @Author:       CRM Team Innovation

@@ -1,25 +1,38 @@
 <template>
-    <lightning-card title="My Appointments" icon-name="standard:service_appointment">
-        <div slot="actions">
-            <lightning-button label="Book Appointment" onclick={handleBookAppointment} variant="brand"></lightning-button>
+    <div class="slds-p-around_medium">
+        <div class="container-card">
+            <div class="header-panel">
+                <div class="slds-media slds-media_center">
+                    <div class="slds-media__figure">
+                        <lightning-icon icon-name="standard:service_appointment" size="medium"></lightning-icon>
+                    </div>
+                    <div class="slds-media__body">
+                        <h2 class="title-text">My Appointments</h2>
+                    </div>
+                </div>
+                <div>
+                    <lightning-button label="Book Appointment" onclick={handleBookAppointment} variant="brand"></lightning-button>
+                </div>
+            </div>
+            <div class="body-panel">
+                <template if:true={appointments.length}>
+                    <lightning-datatable
+                        key-field="Id"
+                        data={appointments}
+                        columns={columns}
+                        hide-checkbox-column
+                        sorted-by={sortedBy}
+                        sorted-direction={sortedDirection}
+                        onsort={handleSort}
+                        onrowaction={handleRowAction}>
+                    </lightning-datatable>
+                </template>
+                <template if:false={appointments.length}>
+                    <p class="slds-text-align_center slds-p-around_small">No appointments found.</p>
+                </template>
+            </div>
         </div>
-        <div class="slds-p-around_medium">
-            <template if:true={appointments.length}>
-                <lightning-datatable
-                    key-field="Id"
-                    data={appointments}
-                    columns={columns}
-                    hide-checkbox-column
-                    sorted-by={sortedBy}
-                    sorted-direction={sortedDirection}
-                    onsort={handleSort}>
-                </lightning-datatable>
-            </template>
-            <template if:false={appointments.length}>
-                <p class="slds-text-align_center">No appointments found.</p>
-            </template>
-        </div>
-    </lightning-card>
+    </div>
     <!-- Modal for Booking Appointment -->
     <template if:true={isModalOpen}>
         <section role="dialog" aria-modal="true" aria-labelledby="bookApptModalTitle" tabindex="-1" class="slds-modal slds-fade-in-open">
