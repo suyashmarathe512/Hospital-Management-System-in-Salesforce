@@ -1,0 +1,72 @@
+<apex:page standardController="Bill__c" extensions="BillTriggerHandler" action="{!attemptEmail}" renderAs="pdf" applyBodyTag="false">
+    <head>
+        <style>
+            body{font-family: sans-serif;font-size: 12px;}
+            .header{text-align: center;margin-bottom: 30px;border-bottom: 2px solid #ccc;padding-bottom: 10px;}
+            .info-table{width: 100%;margin-bottom: 20px;}
+            .info-table td{padding: 5px;vertical-align: top;}
+            .line-items{width: 100%;border-collapse: collapse;margin-top: 20px;}
+            .line-items th, .line-items td{border: 1px solid #ddd;padding: 8px;text-align: left;}
+            .line-items th{background-color: #f2f2f2;}
+            .totals{margin-top: 20px;float: right;width: 40%;}
+            .totals table{width: 100%;}
+            .totals td{text-align: right;padding: 5px;}
+            .footer{margin-top: 50px;text-align: center;font-size: 10px;color: #666;}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Medical Invoice</h1>
+            <h3>Hospital Management System</h3>
+        </div>
+        <table class="info-table">
+            <tr>
+                <td width="50%">
+                    <strong>Bill To:</strong><br/>
+                    {!Bill__c.Patient__r.Name}<br/>
+                    {!Bill__c.Patient__r.PersonEmail}
+                </td>
+                <td width="50%" style="text-align: right;">
+                    <strong>Invoice Details:</strong><br/>
+                    Invoice #: {!Bill__c.Name}<br/>
+                    Date: <apex:outputText value="{0,date,MM/dd/yyyy}"><apex:param value="{!Bill__c.Billing_Date__c}"/></apex:outputText><br/>
+                    Consultation: {!Bill__c.Consultation__r.Name}<br/>
+                    Prescription: {!Bill__c.Prescription__r.Name}
+                </td>
+            </tr>
+        </table>
+        <table class="line-items">
+            <thead>
+                <tr>
+                    <th>Item #</th>
+                    <th>Medication</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <apex:repeat value="{!Bill__c.Bill_Line_Items__r}" var="line">
+                    <tr>
+                        <td>{!line.Name}</td>
+                        <td>{!line.Medication__r.Name}</td>
+                        <td>{!line.Quantity__c}</td>
+                        <td>{!line.Unit_Price__c}</td>
+                        <td>{!line.Line_Total__c}</td>
+                    </tr>
+                </apex:repeat>
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <table>
+                <tr><td><strong>Sub Total:</strong></td><td>{!Bill__c.Sub_Total__c}</td></tr>
+                <tr><td><strong>Tax ({!Bill__c.Tax_Percentage__c}%):</strong></td><td>{!Bill__c.Total_Amount__c - Bill__c.Sub_Total__c}</td></tr>
+                <tr><td><h3>Total Amount:</h3></td><td><h3>{!Bill__c.Total_Amount__c}</h3></td></tr>
+            </table>
+        </div>
+        <div class="footer">
+            <p>Thank you for your visit.</p>
+        </div>
+    </body>
+</apex:page>

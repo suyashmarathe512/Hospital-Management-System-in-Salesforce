@@ -1,7 +1,12 @@
+/*********************************************************************************************************
+ * @Author:      CRM Team Innovation
+ * @ClassName:   AppointmentViewerController
+ * @Description: This class is used to fetch the appointment details for the patient.
+ *****************************************************************************************************/
 public with sharing class AppointmentViewerController{
     @AuraEnabled(cacheable=true)
     public static Appointment__c getAppointmentDetails(String recordId){
-        List<Appointment__c> appts = [SELECT 
+        List<Appointment__c> appts=[SELECT 
                                             Name,Appointment_Date__c,Appointment_Status__c,Reason_for_Visit__c,
                                             Doctor__c,Doctor__r.Name,
                                             Patient__c,Patient__r.Name,Patient__r.PersonEmail,Patient__r.Phone,
@@ -17,116 +22,93 @@ public with sharing class AppointmentViewerController{
     }
     @AuraEnabled(cacheable=true)
     public static Map<String,Object> getConsultationFee(String doctorId,String patientId,String visitDate){
-        Map<String,Object> result=new Map<String,Object>();
-        Doctor__c doc=[SELECT 
+        // Query Doctor for fee details
+        Doctor__c doc=[SELECT
                             Consultation_Fees__c
                         FROM
                             Doctor__c
                         WHERE
-                            Id=:doctorId
-                        LIMIT 1];
+                            Id=:doctorId LIMIT 1];
         Decimal baseFee=(doc.Consultation_Fees__c!=null)?doc.Consultation_Fees__c:100;
-        Date dateToCheck = String.isNotBlank(visitDate) ? Date.valueOf(visitDate) : Date.today();
-        Integer visitsToday=[SELECT
-                                COUNT()
-                            FROM
-                                Consultation__c
-                            WHERE
-                                Doctor__c=:doctorId
-                            AND
-                                Patient__c=:patientId
-                            AND
-                                Date_of_Visit__c=:dateToCheck];
-        Integer previousVisits=[SELECT
-                                    COUNT()
-                                FROM
-                                    Consultation__c
-                                WHERE
-                                    Doctor__c=:doctorId
-                                AND
-                                    Patient__c=:patientId];
-        if(visitsToday>0){
-            result.put('fee',0);
-            result.put('message','Same day revisit: No Charge');
-        }else if(previousVisits>0){
-            result.put('fee',baseFee*0.5);
-            result.put('message','Follow-up Visit: 50% Discount Applied');
-        }else{
-            result.put('fee',baseFee);
-            if(baseFee == 0){
-                result.put('message','Standard Fee is 0 (Check Doctor Record)');
-            }else {
-                result.put('message','Standard Consultation Fee');
-            }
-        }
-        return result;
+        // Query Consultation history for this doctor and patient(One SOQL)
+        List<Consultation__c> history=[SELECT
+                                            Date_of_Visit__c 
+                                        FROM
+                                            Consultation__c 
+                                        WHERE
+                                            Doctor__c=:doctorId 
+                                        AND
+                                            Patient__c=:patientId];
+        Date dateToCheck=String.isNotBlank(visitDate)?Date.valueOf(visitDate):Date.today();
+        return calculateFeeLogic(baseFee,history,dateToCheck);
     }
+/*****************************************************************************************************************************
+ * @Author:     CRM Team Innovation
+ * @MethodName: saveConsultation
+ * @param1:     Map<String,Object> consultationData
+ * @param2:     List<Map<String,Object>> medications
+ *@Description:  This method is used to save the consultation details for the patient.
+ *               It also creates a prescription record for the patient.
+ *************************************************************************************************************/
     @AuraEnabled
     public static void saveConsultation(Map<String,Object> consultationData,List<Map<String,Object>> medications){
         Savepoint sp=Database.setSavepoint();
         try{
+            Id doctorId=(Id) consultationData.get('doctorId');
+            Id patientId=(Id) consultationData.get('patientId');
+            Date visitDate=Date.valueOf((String) consultationData.get('visitDate'));
+            Doctor__c doc=[SELECT
+                                Name,Consultation_Fees__c
+                            FROM
+                                Doctor__c
+                            WHERE
+                                Id=:doctorId LIMIT 1];
+            // Fetching Name and Email for Patient
+            Account patient=[SELECT
+                                Name,PersonEmail
+                            FROM
+                                Account
+                            WHERE
+                                Id=:patientId LIMIT 1];
             // 1. Create Consultation Record
             Consultation__c cons=new Consultation__c();
-            cons.Doctor__c=(Id) consultationData.get('doctorId');
-            cons.Patient__c=(Id) consultationData.get('patientId');
-            cons.Date_of_Visit__c=Date.valueOf((String) consultationData.get('visitDate'));
+            cons.Doctor__c=doctorId;
+            cons.Patient__c=patientId;
+            cons.Date_of_Visit__c=visitDate;
             if(consultationData.containsKey('nextVisitDate')&&String.isNotBlank((String)consultationData.get('nextVisitDate'))){
                 cons.Next_Visit__c=Date.valueOf((String) consultationData.get('nextVisitDate'));
             }
             if(consultationData.containsKey('numberOfVisits')&&String.isNotBlank(String.valueOf(consultationData.get('numberOfVisits')))){
                 cons.Number_of_Visits__c=Decimal.valueOf(String.valueOf(consultationData.get('numberOfVisits')));
             }
-            
-            // Use passed visitCharges if available, otherwise calculate
-            if(consultationData.containsKey('visitCharges') && consultationData.get('visitCharges') != null && String.isNotBlank(String.valueOf(consultationData.get('visitCharges')))){
-                cons.Visit_Charges__c = Decimal.valueOf(String.valueOf(consultationData.get('visitCharges')));
-            } else {
-                // Fee Calculation Logic
-                Doctor__c doc = [SELECT 
-                                    Consultation_Fees__c 
-                                FROM 
-                                    Doctor__c
-                                WHERE
-                                    Id = :cons.Doctor__c LIMIT 1];
-                Decimal baseFee = (doc.Consultation_Fees__c != null) ? doc.Consultation_Fees__c : 100;
-                Integer visitsToday = [SELECT
-                                            COUNT()
-                                        FROM
-                                            Consultation__c
-                                        WHERE
-                                            Doctor__c = :cons.Doctor__c
-                                        AND
-                                            Patient__c = :cons.Patient__c
-                                        AND
-                                            Date_of_Visit__c = :cons.Date_of_Visit__c];
-                Integer previousVisits = [SELECT
-                                            COUNT()
-                                        FROM
-                                            Consultation__c
-                                        WHERE
-                                            Doctor__c = :cons.Doctor__c
-                                        AND 
-                                            Patient__c = :cons.Patient__c];
-                if(visitsToday > 0){
-                    cons.Visit_Charges__c = 0; // Same day revisit: Free
-                }else if(previousVisits > 0){
-                    cons.Visit_Charges__c = baseFee * 0.5; // Follow-up: 50% of standard fee
-                }else {
-                    cons.Visit_Charges__c = baseFee; // First visit: Standard fee
-                }
+            // Fee Calculation Logic
+            if(consultationData.containsKey('visitCharges')&&consultationData.get('visitCharges')!=null&&String.isNotBlank(String.valueOf(consultationData.get('visitCharges')))){
+                cons.Visit_Charges__c=Decimal.valueOf(String.valueOf(consultationData.get('visitCharges')));
+            }else{
+                // Query History only if fee calculation is needed
+                List<Consultation__c> history=[SELECT
+                                                    Date_of_Visit__c 
+                                                FROM
+                                                    Consultation__c 
+                                                WHERE
+                                                    Doctor__c=:doctorId 
+                                                AND
+                                                    Patient__c=:patientId];
+                Decimal baseFee=(doc.Consultation_Fees__c!=null)?doc.Consultation_Fees__c:100;
+                Map<String,Object> feeInfo=calculateFeeLogic(baseFee,history,visitDate);
+                cons.Visit_Charges__c=(Decimal) feeInfo.get('fee');
             }
             insert cons;
             // 2. Create Prescription Record
             Prescription__c presc=new Prescription__c();
             presc.Consultation__c=cons.Id;
-            presc.Account__c=cons.Patient__c;
+            presc.Account__c=patientId;
             presc.Notes__c=(String) consultationData.get('notes');
             insert presc;
             // 3. Create Medication Line Items
-            if(medications != null&&!medications.isEmpty()){
+            if(medications!=null&&!medications.isEmpty()){
                 List<Medication__c> lineItems=new List<Medication__c>();
                 for(Map<String,Object> med:medications){
-                    // Skip rows without a medicine name
                     String medName=(String) med.get('name');
                     if(String.isBlank(medName)) continue;
                     Medication__c item=new Medication__c();
@@ -143,49 +125,115 @@ public with sharing class AppointmentViewerController{
                     }
                     lineItems.add(item);
                 }
-                if(!lineItems.isEmpty()) insert lineItems;
+                if(!lineItems.isEmpty()){
+                    insert lineItems;
+                }
             }
             // 4. Update Appointment Status to Completed
-            if(consultationData.containsKey('appointmentId') && String.isNotBlank((String)consultationData.get('appointmentId'))){
-                Appointment__c apptToUpdate = new Appointment__c();
-                apptToUpdate.Id = (Id)consultationData.get('appointmentId');
-                apptToUpdate.Appointment_Status__c = 'Completed';
+            if(consultationData.containsKey('appointmentId')&&String.isNotBlank((String)consultationData.get('appointmentId'))){
+                Appointment__c apptToUpdate=new Appointment__c();
+                apptToUpdate.Id=(Id) consultationData.get('appointmentId');
+                apptToUpdate.Appointment_Status__c='Completed';
                 update apptToUpdate;
             }
-            // 5. Send PDF Email
-            sendPrescriptionEmail(cons.Id);
+            // 5. Send Email to Patient
+            if(String.isNotBlank(patient.PersonEmail)){
+                // We need the Auto-Numbers generated after insert
+                Consultation__c consRec=[SELECT
+                                            Name
+                                        FROM
+                                            Consultation__c
+                                        WHERE
+                                            Id=:cons.Id
+                                        LIMIT 1];
+                Prescription__c prescRec=[SELECT
+                                            Name
+                                        FROM
+                                            Prescription__c
+                                        WHERE
+                                            Id=:presc.Id
+                                        LIMIT 1];
+                sendConsultationEmail(patient,doc,consRec,prescRec,cons,presc,medications);
+            }
         }catch(Exception e){
             Database.rollback(sp);
-            throw new AuraHandledException('Error saving consultation: ' + e.getMessage());
+            throw new AuraHandledException('Error saving consultation: '+e.getMessage());
         }
     }
-    @future(callout=true)
-    public static void sendPrescriptionEmail(Id consultationId){
-        try {
-            Consultation__c cons = [SELECT Id, Name, Patient__r.PersonEmail, Patient__r.Name FROM Consultation__c WHERE Id = :consultationId LIMIT 1];
-            if(cons.Patient__r.PersonEmail != null){
-                PageReference pdfPage = Page.PrescriptionPDF;
-                pdfPage.getParameters().put('id', consultationId);
-                Blob pdfBlob;
-                if(Test.isRunningTest()) { 
-                    pdfBlob = Blob.valueOf('Test PDF');
-                } else {
-                    pdfBlob = pdfPage.getContentAsPDF();
-                }
-
-                Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
-                email.setToAddresses(new List<String>{cons.Patient__r.PersonEmail});
-                email.setSubject('Your Prescription and Bill Details');
-                email.setPlainTextBody('Dear ' + cons.Patient__r.Name + ',\n\nPlease find attached your prescription and billing details from your recent visit.\n\nRegards,\nHospital Management System');
-                Messaging.EmailFileAttachment attach = new Messaging.EmailFileAttachment();
-                attach.setFileName('Prescription_' + cons.Name + '.pdf');
-                attach.setBody(pdfBlob);
-                email.setFileAttachments(new List<Messaging.EmailFileAttachment>{attach});
-                
-                Messaging.sendEmail(new List<Messaging.SingleEmailMessage>{email});
+/*******************************************************************************************************************
+ * @Author:     CRM Team Innovation
+ * @MethodName: calculateFeeLogic
+ * @param1:     Decimal baseFee
+ * @param2:     List<Consultation__c> history
+ * @param3:     Date dateToCheck
+ *@Description:  This method is used to calculate the fee for the consultation.
+ *****************************************************************************************************/
+    private static Map<String,Object> calculateFeeLogic(Decimal baseFee,List<Consultation__c> history,Date dateToCheck){
+        Map<String,Object> result=new Map<String,Object>();
+        Integer visitsToday=0;
+        Integer previousVisits=history.size();
+        for(Consultation__c c:history){
+            if(c.Date_of_Visit__c==dateToCheck){
+                visitsToday++;
             }
-        } catch(Exception e) {
-            System.debug('Error sending email: ' + e.getMessage());
         }
+        if(visitsToday > 0){
+            result.put('fee',0);
+            result.put('message','Same day revisit: No Charge');
+        }else if(previousVisits > 0){
+            result.put('fee',baseFee * 0.5);
+            result.put('message','Follow-up Visit: 50% Discount Applied');
+        }else{
+            result.put('fee',baseFee);
+            if(baseFee==0){
+                result.put('message','Standard Fee is 0(Check Doctor Record)');
+            }else{
+                result.put('message','Standard Consultation Fee');
+            }
+        }
+        return result;
+    }
+/******************************************************************************************************************
+ * @Author:     CRM Team Innovation
+ * @MethodName: sendConsultationEmail
+ * @param1:     Account pat
+ * @param2:     Doctor__c doc
+ * @param3:     Consultation__c consRec
+ * @param4:     Prescription__c prescRec
+ * @param5:     Consultation__c cons
+ * @param6:     Prescription__c presc
+ * @param7:     List<Map<String,Object>> medications
+ * @Description:  This method is used to send an email to the patient with the consultation details.
+ *****************************************************************************************************************/
+    private static void sendConsultationEmail(Account pat,Doctor__c doc,Consultation__c consRec,Prescription__c prescRec,Consultation__c cons,Prescription__c presc,List<Map<String,Object>> medications){
+        Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
+        mail.setToAddresses(new List<String>{pat.PersonEmail});
+        mail.setSubject('Consultation Summary');
+        String body='Dear '+pat.Name+',\n\n';
+        body+='Here is the summary of your consultation with Dr. '+doc.Name+' on '+cons.Date_of_Visit__c.format()+'.\n\n';
+        body+='Consultation Details:\n';
+        body+='Consultation Number: '+consRec.Name+'\n';
+        body+='Date: '+cons.Date_of_Visit__c.format()+'\n';
+        body+='Charges: '+cons.Visit_Charges__c+'\n\n';
+        body+='Prescription Number: '+prescRec.Name+'\n';
+        if(String.isNotBlank(presc.Notes__c)){
+            body+='Prescription Notes:\n'+presc.Notes__c+'\n';
+        }
+        body+='\n';
+        if(medications!=null&&!medications.isEmpty()){
+            body+='Medications:\n';
+            for(Map<String,Object> med:medications){
+                String medName=(String) med.get('name');
+                if(String.isBlank(medName)) continue;
+                body+='- '+medName;
+                if(med.get('dosage')!=null) body+=',Dosage: '+med.get('dosage');
+                if(med.get('frequency')!=null) body+=',Frequency: '+med.get('frequency');
+                if(med.get('duration')!=null) body+=',Duration: '+med.get('duration');
+                body+='\n';
+            }
+        }
+        body+='\nRegards,\nHospital Management System';
+        mail.setPlainTextBody(body);
+        Messaging.sendEmail(new List<Messaging.SingleEmailMessage>{mail});
     }
 }
