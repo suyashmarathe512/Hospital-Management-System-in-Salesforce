@@ -53,23 +53,23 @@ global with sharing class AppointmentService{
                     validPatientIds.add(acc.Id);
                 }
             }
-            Set<String> validServerIds=new Set<String>();
+            Map<String,Appointment__c> validServerAppts=new Map<String,Appointment__c>();
             if(!incomingServerIds.isEmpty()){
                 for(Appointment__c a:[SELECT
-                                            Id
+                                            Id,Appointment_Status__c
                                         FROM
                                             Appointment__c
                                         WHERE
                                             Id
                                         IN :incomingServerIds WITH SECURITY_ENFORCED]){
-                    validServerIds.add(a.Id);
+                    validServerAppts.put(a.Id,a);
                 }
             }
             // Check for existing appointments by External ID to prevent duplicates
-            Map<String,Id> existingApptMap=new Map<String,Id>();
+            Map<String,Appointment__c> existingApptMap=new Map<String,Appointment__c>();
             if(!incomingClientApptIds.isEmpty()){
                 for(Appointment__c exist:[SELECT 
-                                            Id,External_Record_Id__c
+                                            Id,External_Record_Id__c,Appointment_Status__c
                                         FROM
                                             Appointment__c
                                         WHERE
@@ -77,7 +77,7 @@ global with sharing class AppointmentService{
                                         IN
                                             :incomingClientApptIds
                                         WITH SECURITY_ENFORCED]){
-                    existingApptMap.put(exist.External_Record_Id__c,exist.Id);
+                    existingApptMap.put(exist.External_Record_Id__c,exist);
                 }
             }
             // Build Appointment records
@@ -90,12 +90,22 @@ global with sharing class AppointmentService{
                 }
                 // Use Server Id if provided(Upsert logic)
                 String serverId=(String)w.get('serverAppointmentId');
-                if(String.isNotBlank(serverId)&&validServerIds.contains(serverId)){
+                Appointment__c existingRecord=null;
+                if(String.isNotBlank(serverId)&&validServerAppts.containsKey(serverId)){
                     // Set Id directly to update existing record
+                    existingRecord=validServerAppts.get(serverId);
                     appt.Id=serverId;
                 }else if(String.isNotBlank(clientId)&&existingApptMap.containsKey(clientId)){
                     // Match by External ID if Server ID is missing
-                    appt.Id=existingApptMap.get(clientId);
+                    existingRecord=existingApptMap.get(clientId);
+                    appt.Id=existingRecord.Id;
+                }
+                if(existingRecord!=null&&(existingRecord.Appointment_Status__c=='Confirmed'||existingRecord.Appointment_Status__c=='Completed')){
+                    Map<String,String> details=new Map<String,String>();
+                    details.put('serverAppointmentId',existingRecord.Id);
+                    details.put('status',existingRecord.Appointment_Status__c);
+                    responseMap.put(clientId,details);
+                    continue;
                 }
                 // Map fields
                 Object dateObj=w.get('appointmentDate');
