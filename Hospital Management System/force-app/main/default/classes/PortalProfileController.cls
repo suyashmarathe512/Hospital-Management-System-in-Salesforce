@@ -7,9 +7,6 @@
 public with sharing class PortalProfileController{
     public class AccountSummary{
         @AuraEnabled public Account account;
-        @AuraEnabled public List<Appointment__c> appointments;
-        @AuraEnabled public List<Consultation__c> consultations;
-        @AuraEnabled public List<Prescription__c> prescriptions;
     }
 /*********************************************************************************************************
  * @Author:      CRM Team Innovation
@@ -20,7 +17,7 @@ public with sharing class PortalProfileController{
  *****************************************************************************************************/
     @AuraEnabled(cacheable=true)
     public static AccountSummary getProfileData(Id accountId){
-        if (accountId==null){
+        if(accountId==null){
             throw new AuraHandledException('Account Id is required.');
         }
         AccountSummary result=new AccountSummary();
@@ -36,59 +33,44 @@ public with sharing class PortalProfileController{
                         WITH
                             SECURITY_ENFORCED
                         LIMIT 1];
-        // Upcoming Appointments for this patient
-        result.appointments=[SELECT
-                                Id,Name,Appointment_Date__c,Appointment_Status__c,Appointment_Type__c,
-                                Doctor__c,Doctor__r.Name,Reason_for_Visit__c
-                            FROM
-                                Appointment__c
-                            WHERE
-                                Patient__c=:accountId
-                            ORDER BY
-                                Appointment_Date__c DESC
-                            LIMIT 10];
-        // Recent Consultations
-        result.consultations=[SELECT
-                                    Id,Name,Date_of_Visit__c,Doctor__c,Doctor__r.Name,Next_Visit__c,Visit_Charges__c
-                                FROM
-                                    Consultation__c
-                                WHERE
-                                    Patient__c=:accountId
-                                ORDER BY
-                                    Date_of_Visit__c DESC
-                                LIMIT 5];
-        // Recent Prescriptions
-        result.prescriptions=[SELECT
-                                    Id,Name,Total_Amount__c,Total_Medication_Amount__c,Notes__c,CreatedDate
-                                FROM
-                                    Prescription__c
-                                WHERE
-                                    Account__c=:accountId
-                                ORDER BY
-                                    CreatedDate DESC
-                                LIMIT 5];
         return result;
     }
-/*********************************************************************************************************
- * @Author:    CRM Team Innovation
- * @MethodName: getPrescriptions
- * @param1 :    Id accountId
- * @Description: Fetches a detailed list of prescriptions and their associated medications for a specific account.
- *****************************************************************************************************/
-    @AuraEnabled(cacheable=true)
-    public static List<Prescription__c> getPrescriptions(Id accountId){
-        return [SELECT
-                Id,Name,Total_Amount__c,Total_Medication_Amount__c,Notes__c,CreatedDate,
-                (SELECT
-                    Id,Name,Dosage__c,Quantity__c
-                FROM
-                    Medications__r)
-            FROM
-                Prescription__c
-            WHERE
-                Account__c=:accountId
-            ORDER BY
-                CreatedDate DESC
-        ];
+/*****************************************************************************************************
+     * @Author:       CRM Team Innovation
+     * @MethodName:   updateProfile
+     * @Param:        Account accountData
+     * @Description:  Updates the patient's Account record with new information.
+     ******************************************************************************************************/
+    @AuraEnabled
+    public static void updateProfile(Account accountData){
+        try{
+            // Create a new Account instance to update only editable fields.
+            Account accToUpdate=new Account(Id=accountData.Id);
+            
+            accToUpdate.Salutation=accountData.Salutation;
+            accToUpdate.FirstName=accountData.FirstName;
+            accToUpdate.LastName=accountData.LastName;
+            accToUpdate.PersonBirthdate=accountData.PersonBirthdate;
+            accToUpdate.PersonMobilePhone=accountData.PersonMobilePhone;
+            accToUpdate.PersonEmail=accountData.PersonEmail;
+            accToUpdate.Phone=accountData.Phone;
+            accToUpdate.PersonOtherPhone=accountData.PersonOtherPhone;
+            
+            accToUpdate.PersonMailingStreet=accountData.PersonMailingStreet;
+            accToUpdate.PersonMailingCity=accountData.PersonMailingCity;
+            accToUpdate.PersonMailingState=accountData.PersonMailingState;
+            accToUpdate.PersonMailingPostalCode=accountData.PersonMailingPostalCode;
+            accToUpdate.PersonMailingCountry=accountData.PersonMailingCountry;
+            
+            accToUpdate.PersonOtherStreet=accountData.PersonOtherStreet;
+            accToUpdate.PersonOtherCity=accountData.PersonOtherCity;
+            accToUpdate.PersonOtherState=accountData.PersonOtherState;
+            accToUpdate.PersonOtherPostalCode=accountData.PersonOtherPostalCode;
+            accToUpdate.PersonOtherCountry=accountData.PersonOtherCountry;
+            
+            update accToUpdate;
+        }catch(Exception e){
+            throw new AuraHandledException('Error updating profile: ' + e.getMessage());
+        }
     }
 }

@@ -1,40 +1,75 @@
-import{LightningElement,wire,track}from 'lwc';
-import{CurrentPageReference}from 'lightning/navigation';
-import getConsultations from '@salesforce/apex/PortalConsultationController.getConsultations';
-const COLUMNS=[
-{label:'Consultation Number',fieldName:'Name'},
-{label:'Patient',fieldName:'PatientName'},
-{label:'Date of Visit',fieldName:'Date_of_Visit__c',type:'date'},
-{label:'Next Visit',fieldName:'Next_Visit__c',type:'date'},
-{label:'Doctor',fieldName:'DoctorName'},
-{label:'Visit Charges',fieldName:'Visit_Charges__c',type:'currency'}
+import { LightningElement, track } from 'lwc';
+import getConsultations from '@salesforce/apex/PortalConsultationsController.getConsultations';
+
+const COLUMNS = [
+    { 
+        label: 'Consultation Number', 
+        fieldName: 'Name', 
+        type: 'button', 
+        typeAttributes: { label: { fieldName: 'Name' }, variant: 'base' },
+        sortable: true 
+    },
+    { label: 'Doctor Name', fieldName: 'DoctorName', type: 'text', sortable: true },
+    { label: 'Date of Visit', fieldName: 'Date_of_Visit__c', type: 'date', sortable: true },
+    { label: 'Visit Charges', fieldName: 'Visit_Charges__c', type: 'currency', sortable: true }
 ];
-export default class PortalConsultation extends LightningElement{
-    @track accountId;
-    @track consultations;
-    columns=COLUMNS;
-    @wire(CurrentPageReference)
-    getStateParameters(currentPageReference){
-        if(currentPageReference&&currentPageReference.state.accountId){
-            this.accountId=currentPageReference.state.accountId;
+
+export default class PortalConsultation extends LightningElement {
+    @track consultations = [];
+    @track columns = COLUMNS;
+    @track sortedBy;
+    @track sortedDirection = 'asc';
+    
+    // Modal State
+    @track isModalOpen = false;
+    @track selectedConsultation = {};
+
+    connectedCallback() {
+        this.fetchData();
     }
-}
-    connectedCallback(){
-        const storedAccountId=window.sessionStorage.getItem('portalAccountId');
-        if(!this.accountId&&storedAccountId){
-            this.accountId=storedAccountId;
+
+    async fetchData() {
+        // Retrieve AccountId from session storage (set by portalLogin)
+        const accountId = window.sessionStorage.getItem('portalAccountId');
+        
+        try {
+            const data = await getConsultations({ accountId: accountId });
+            // Flatten the data for the datatable
+            this.consultations = data;
+        } catch (error) {
+            console.error('Error fetching consultations', error);
+        }
     }
-}
-    @wire(getConsultations,{accountId:'$accountId'})
-    wiredConsultations({error,data}){
-        if(data){
-            this.consultations=data.map(record =>({
-                ...record,
-                PatientName:record.Patient__r?record.Patient__r.Name :'',
-                DoctorName:record.Doctor__r?record.Doctor__r.Name :''
-        }));
-}else if(error){
-            console.error('Error loading consultations',error);
+
+    handleSort(event) {
+        const { fieldName: sortedBy, sortDirection } = event.detail;
+        const cloneData = [...this.consultations];
+
+        cloneData.sort(this.sortBy(sortedBy, sortDirection === 'asc' ? 1 : -1));
+        this.consultations = cloneData;
+        this.sortedBy = sortedBy;
+        this.sortedDirection = sortDirection;
     }
-}
+
+    sortBy(field, reverse, primer) {
+        const key = primer
+            ? function (x) { return primer(x[field]); }
+            : function (x) { return x[field]; };
+
+        return function (a, b) {
+            a = key(a);
+            b = key(b);
+            return reverse * ((a > b) - (b > a));
+        };
+    }
+
+    handleRowAction(event) {
+        const row = event.detail.row;
+        this.selectedConsultation = row;
+        this.isModalOpen = true;
+    }
+
+    closeModal() {
+        this.isModalOpen = false;
+    }
 }

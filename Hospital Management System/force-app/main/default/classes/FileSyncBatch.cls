@@ -34,6 +34,27 @@ public with sharing class FileSyncBatch implements Database.Batchable<sObject>,D
      ******************************************************************************************************/
     public void execute(Database.BatchableContext BC,List<Account> scope){
         List<ContentVersion> filesToInsert=new List<ContentVersion>();
+        
+        // Map to store existing file titles for each Account to prevent duplicates
+        Map<Id,Set<String>> existingFileTitles=new Map<Id,Set<String>>();
+        Set<Id> accountIds=new Set<Id>();
+        for(Account acc:scope){
+            accountIds.add(acc.Id);
+        }
+        // Fetch existing file titles linked to these accounts
+        for(ContentDocumentLink link:[SELECT
+                                            LinkedEntityId,ContentDocument.Title
+                                        FROM
+                                            ContentDocumentLink
+                                        WHERE
+                                            LinkedEntityId
+                                        IN
+                                            :accountIds]){
+            if(!existingFileTitles.containsKey(link.LinkedEntityId)){
+                existingFileTitles.put(link.LinkedEntityId,new Set<String>());
+            }
+            existingFileTitles.get(link.LinkedEntityId).add(link.ContentDocument.Title);
+        }
         Http http=new Http();
         for(Account acc:scope){
             HttpRequest req=new HttpRequest();
@@ -48,13 +69,20 @@ public with sharing class FileSyncBatch implements Database.Batchable<sObject>,D
                     if(responseMap!=null && responseMap.containsKey(acc.External_Record_Id__c)){
                         List<FileResponseWrapper> incomingFiles=responseMap.get(acc.External_Record_Id__c);
                         if(incomingFiles!=null){
+                            Set<String> currentAccountTitles=existingFileTitles.containsKey(acc.Id)? existingFileTitles.get(acc.Id):new Set<String>();
                             for(FileResponseWrapper fw:incomingFiles){
+                                // Skip if a file with this title already exists for this account
+                                if(currentAccountTitles.contains(fw.title)){
+                                    continue;
+                                }
                                 ContentVersion newFile=new ContentVersion();
                                 newFile.Title=fw.title;
                                 newFile.PathOnClient=fw.title+'.'+fw.fileExtension;
                                 newFile.VersionData=EncodingUtil.base64Decode(fw.versionData);
                                 newFile.FirstPublishLocationId=acc.Id; // Automatically creates ContentDocumentLink
                                 filesToInsert.add(newFile);
+                                // Add to set to prevent duplicates within the same batch run
+                                currentAccountTitles.add(fw.title);
                             }
                         }
                     }

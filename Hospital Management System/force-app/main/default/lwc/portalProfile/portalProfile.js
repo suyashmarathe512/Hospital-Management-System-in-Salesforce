@@ -1,6 +1,8 @@
 import{LightningElement,track,wire}from 'lwc';
 import{CurrentPageReference}from 'lightning/navigation';
+import{ShowToastEvent}from 'lightning/platformShowToastEvent';
 import getProfileData from '@salesforce/apex/PortalProfileController.getProfileData';
+import updateProfile from '@salesforce/apex/PortalProfileController.updateProfile';
 import{getRecord,getFieldValue}from 'lightning/uiRecordApi';
 import SALUTATION_FIELD from '@salesforce/schema/Account.Salutation';
 import FIRSTNAME_FIELD from '@salesforce/schema/Account.FirstName';
@@ -29,6 +31,8 @@ const FIELDS=[
 export default class PortalProfile extends LightningElement{
     @track loading=true;
     @track error;
+    @track isEditMode=false;
+    @track isSaving=false;
     @track caccount={};
     @track accountId;
     @track appointments=[];
@@ -107,5 +111,58 @@ export default class PortalProfile extends LightningElement{
     }
     get accountName(){
         return this.caccount ? `${this.caccount.FirstName||''} ${this.caccount.LastName||''}` :'My Profile';
+    }
+
+    get isReadOnly(){
+        return !this.isEditMode;
+    }
+
+    handleEdit(){
+        this.isEditMode=true;
+    }
+
+    handleCancel(){
+        this.isEditMode=false;
+        this.fetchData(this.accountId,null);
+    }
+
+    handleInputChange(event){
+        const field=event.target.dataset.field;
+        if(field){
+            this.caccount[field]=event.target.value;
+        }
+    }
+
+    handleMailingAddressChange(event){
+        this.caccount.PersonMailingStreet=event.detail.street;
+        this.caccount.PersonMailingCity=event.detail.city;
+        this.caccount.PersonMailingState=event.detail.province;
+        this.caccount.PersonMailingCountry=event.detail.country;
+        this.caccount.PersonMailingPostalCode=event.detail.postalCode;
+    }
+
+    handleOtherAddressChange(event){
+        this.caccount.PersonOtherStreet=event.detail.street;
+        this.caccount.PersonOtherCity=event.detail.city;
+        this.caccount.PersonOtherState=event.detail.province;
+        this.caccount.PersonOtherCountry=event.detail.country;
+        this.caccount.PersonOtherPostalCode=event.detail.postalCode;
+    }
+
+    async handleSave(){
+        this.isSaving=true;
+        try{
+            await updateProfile({accountData:this.caccount});
+            this.dispatchEvent(new ShowToastEvent({title:'Success',message:'Profile updated successfully',variant:'success'}));
+            this.isEditMode=false;
+        }catch(error){
+            this.dispatchEvent(new ShowToastEvent({
+                title:'Error',
+                message:error.body?error.body.message:'Error updating profile',
+                variant:'error'
+            }));
+        }finally{
+            this.isSaving=false;
+        }
     }
 }

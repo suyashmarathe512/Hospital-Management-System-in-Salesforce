@@ -9,10 +9,21 @@
             <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
                 <span class="slds-assistive-text">error</span>
                 <h2>{error}</h2>
-            </div>
+            </div>  
         </template>
         <template if:true={hasData}>
             <lightning-card title="My Profile" icon-name="standard:user">
+                <div slot="actions">
+                    <template if:false={isEditMode}>
+                        <lightning-button label="Edit" onclick={handleEdit}></lightning-button>
+                    </template>
+                </div>
+                <div slot="footer" class="slds-align_absolute-center">
+                    <template if:true={isEditMode}>
+                        <lightning-button variant="neutral" label="Cancel" onclick={handleCancel} class="slds-m-right_small"></lightning-button>
+                        <lightning-button variant="brand" label="Save Changes" onclick={handleSave} disabled={isSaving}></lightning-button>
+                    </template>
+                </div>
                 <div class="slds-p-horizontal_medium">
                     <!-- Personal Information Section -->
                     <div class="slds-section slds-is-open">
@@ -22,28 +33,28 @@
                         <div aria-hidden="false" class="slds-section__content">
                             <div class="slds-grid slds-wrap slds-gutters">
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="Salutation" value={caccount.Salutation} readonly></lightning-input>
+                                    <lightning-input label="Salutation" value={caccount.Salutation} data-field="Salutation" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="First Name" value={caccount.FirstName} readonly></lightning-input>
+                                    <lightning-input label="First Name" value={caccount.FirstName} data-field="FirstName" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input label="Last Name" value={caccount.LastName} readonly></lightning-input>
+                                    <lightning-input label="Last Name" value={caccount.LastName} data-field="LastName" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="date" label="Birthdate" value={caccount.PersonBirthdate} readonly></lightning-input>
+                                    <lightning-input type="date" label="Birthdate" value={caccount.PersonBirthdate} data-field="PersonBirthdate" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Mobile" value={caccount.PersonMobilePhone} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Mobile" value={caccount.PersonMobilePhone} data-field="PersonMobilePhone" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="email" label="Email" value={caccount.PersonEmail} readonly></lightning-input>
+                                    <lightning-input type="email" label="Email" value={caccount.PersonEmail} data-field="PersonEmail" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Phone" value={caccount.Phone} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Phone" value={caccount.Phone} data-field="Phone" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                                 <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
-                                    <lightning-input type="tel" label="Other Phone" value={caccount.Other_Phone__c} readonly></lightning-input>
+                                    <lightning-input type="tel" label="Other Phone" value={caccount.Other_Phone__c} data-field="Other_Phone__c" onchange={handleInputChange} readonly={isReadOnly}></lightning-input>
                                 </div>
                             </div>
                         </div>
@@ -57,37 +68,39 @@
                             <div class="slds-grid slds-wrap slds-gutters">
                                 <!-- Mailing Address -->
                                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
-                                    <div class="slds-form-element slds-form-element_readonly slds-m-bottom_small">
-                                        <span class="slds-form-element__label">Mailing Address</span>
-                                        <div class="slds-form-element__control">
-                                            <div class="slds-form-element__static field-value">
-                                                <lightning-formatted-address
-                                                    street={caccount.PersonMailingStreet}
-                                                    city={caccount.PersonMailingCity}
-                                                    country={caccount.PersonMailingCountry}
-                                                    province={caccount.PersonMailingState}
-                                                    postal-code={caccount.PersonMailingPostalCode}
-                                                ></lightning-formatted-address>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <lightning-input-address
+                                        address-label="Mailing Address"
+                                        street-label="Street"
+                                        city-label="City"
+                                        country-label="Country"
+                                        province-label="State/Province"
+                                        postal-code-label="Postal Code"
+                                        street={caccount.PersonMailingStreet}
+                                        city={caccount.PersonMailingCity}
+                                        country={caccount.PersonMailingCountry}
+                                        province={caccount.PersonMailingState}
+                                        postal-code={caccount.PersonMailingPostalCode}
+                                        onchange={handleMailingAddressChange}
+                                        read-only={isReadOnly}
+                                    ></lightning-input-address>
                                 </div>
                                 <!-- Other Address -->
                                 <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
-                                    <div class="slds-form-element slds-form-element_readonly slds-m-bottom_small">
-                                        <span class="slds-form-element__label">Other Address</span>
-                                        <div class="slds-form-element__control">
-                                            <div class="slds-form-element__static field-value">
-                                                <lightning-formatted-address
-                                                    street={caccount.PersonOtherStreet}
-                                                    city={caccount.PersonOtherCity}
-                                                    country={caccount.PersonOtherCountry}
-                                                    province={caccount.PersonOtherState}
-                                                    postal-code={caccount.PersonOtherPostalCode}
-                                                ></lightning-formatted-address>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <lightning-input-address
+                                        address-label="Other Address"
+                                        street-label="Street"
+                                        city-label="City"
+                                        country-label="Country"
+                                        province-label="State/Province"
+                                        postal-code-label="Postal Code"
+                                        street={caccount.PersonOtherStreet}
+                                        city={caccount.PersonOtherCity}
+                                        country={caccount.PersonOtherCountry}
+                                        province={caccount.PersonOtherState}
+                                        postal-code={caccount.PersonOtherPostalCode}
+                                        onchange={handleOtherAddressChange}
+                                        read-only={isReadOnly}
+                                    ></lightning-input-address>
                                 </div>
                             </div>
                         </div>
