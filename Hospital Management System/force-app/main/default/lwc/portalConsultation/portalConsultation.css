@@ -1,41 +1,16 @@
-.header-icon-wrapper {
-    background-color: #0070d2; /* Salesforce Brand Blue */
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
-}
-
-.datatable-container {
+.consultation-card {
+    transition: all 0.2s ease-in-out;
     border: 1px solid #dddbda;
-    border-radius: 0.25rem;
-    overflow: hidden;
-    animation: fadeIn 0.5s ease-in-out;
 }
 
-.empty-state-container {
+.card-header {
+    cursor: pointer;
+}
+
+.card-header:hover {
     background-color: #f3f2f2;
-    border-radius: 0.25rem;
-    border: 1px dashed #c9c7c5;
 }
 
-.empty-icon {
-    --sds-c-icon-color-foreground-default: #706e6b;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.slds-form-element__label {
-    font-weight: 600;
-    color: #514f4d;
-}
-
-.slds-border_bottom {
-    padding-bottom: 0.25rem;
-    min-height: 1.5rem;
+.detail-drawer {
+    background-color: #fafaf9; /* slds-theme_shade */
 }

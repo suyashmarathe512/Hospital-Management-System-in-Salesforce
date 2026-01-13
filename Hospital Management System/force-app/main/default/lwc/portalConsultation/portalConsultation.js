@@ -1,75 +1,109 @@
-import { LightningElement, track } from 'lwc';
+import { LightningElement, track, wire } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
 import getConsultations from '@salesforce/apex/PortalConsultationsController.getConsultations';
 
-const COLUMNS = [
-    { 
-        label: 'Consultation Number', 
-        fieldName: 'Name', 
-        type: 'button', 
-        typeAttributes: { label: { fieldName: 'Name' }, variant: 'base' },
-        sortable: true 
-    },
-    { label: 'Doctor Name', fieldName: 'DoctorName', type: 'text', sortable: true },
-    { label: 'Date of Visit', fieldName: 'Date_of_Visit__c', type: 'date', sortable: true },
-    { label: 'Visit Charges', fieldName: 'Visit_Charges__c', type: 'currency', sortable: true }
-];
-
-export default class PortalConsultation extends LightningElement {
+export default class PortalConsultations extends NavigationMixin(LightningElement) {
+    @track accountId;
     @track consultations = [];
-    @track columns = COLUMNS;
-    @track sortedBy;
-    @track sortedDirection = 'asc';
-    
-    // Modal State
-    @track isModalOpen = false;
-    @track selectedConsultation = {};
-
+    @track currentDetail = {};
+    @track isLoading = true;
+    @track detailsLoading = false;
+    // Track which card is expanded
+    expandedId = null;
     connectedCallback() {
-        this.fetchData();
+        // Retrieve Account ID from session storage (consistent with other portal components)
+        this.accountId = sessionStorage.getItem('portalAccountId');
     }
 
-    async fetchData() {
-        // Retrieve AccountId from session storage (set by portalLogin)
-        const accountId = window.sessionStorage.getItem('portalAccountId');
-        
-        try {
-            const data = await getConsultations({ accountId: accountId });
-            // Flatten the data for the datatable
-            this.consultations = data;
-        } catch (error) {
-            console.error('Error fetching consultations', error);
+    @wire(getConsultations, { accountId: '$accountId' })
+    wiredSummaries({ error, data }) {
+        this.isLoading = false;
+        if (data) {
+            this.consultations = data.map(con => ({
+                id: con.Id,
+                name: con.Name,
+                doctorName: con.DoctorName,
+                visitDate: con.Date_of_Visit__c,
+                visitCharges: con.Visit_Charges__c,
+                status: this.calculateStatus(con.Next_Visit__c),
+                isExpanded: false,
+                badgeClass: this.getBadgeClass(this.calculateStatus(con.Next_Visit__c))
+            }));
+        } else if (error) {
+            console.error('Error fetching consultations:', error);
+            this.consultations = [];
         }
     }
 
-    handleSort(event) {
-        const { fieldName: sortedBy, sortDirection } = event.detail;
-        const cloneData = [...this.consultations];
-
-        cloneData.sort(this.sortBy(sortedBy, sortDirection === 'asc' ? 1 : -1));
-        this.consultations = cloneData;
-        this.sortedBy = sortedBy;
-        this.sortedDirection = sortDirection;
+    calculateStatus(nextVisitDate) {
+        if (nextVisitDate && new Date(nextVisitDate) > new Date()) {
+            return 'Follow-up';
+        }
+        return 'Completed';
     }
 
-    sortBy(field, reverse, primer) {
-        const key = primer
-            ? function (x) { return primer(x[field]); }
-            : function (x) { return x[field]; };
-
-        return function (a, b) {
-            a = key(a);
-            b = key(b);
-            return reverse * ((a > b) - (b > a));
-        };
+    get hasConsultations() {
+        return this.consultations && this.consultations.length > 0;
     }
 
-    handleRowAction(event) {
-        const row = event.detail.row;
-        this.selectedConsultation = row;
-        this.isModalOpen = true;
+    getBadgeClass(status) {
+        // SLDS Badge styling
+        if (status === 'Completed') {
+            return 'slds-badge slds-theme_success';
+        } else if (status === 'Follow-up') {
+            return 'slds-badge slds-theme_warning';
+        }
+        return 'slds-badge';
     }
 
-    closeModal() {
-        this.isModalOpen = false;
+    async handleToggle(event) {
+        const id = event.currentTarget.dataset.id;
+
+        // If clicking the already expanded card, collapse it
+        if (this.expandedId === id) {
+            this.expandedId = null;
+            this.updateExpansionState();
+            return;
+        }
+
+        // Expand new card
+        this.expandedId = id;
+        this.updateExpansionState();
+        this.setDetails(id);
+    }
+
+    updateExpansionState() {
+        this.consultations = this.consultations.map(con => ({
+            ...con,
+            isExpanded: con.id === this.expandedId
+        }));
+    }
+
+    setDetails(id) {
+        const selected = this.consultations.find(c => c.id === id);
+        if (selected) {
+            this.currentDetail = {
+                appointmentName: selected.name,
+                visitCharges: selected.visitCharges,
+                // Prescription and Billing are not available in the current Apex controller
+                prescription: null,
+                billing: null
+            };
+        }
+    }
+
+    handleViewBill(event) {
+        const docId = event.target.dataset.docId;
+        if (docId) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__namedPage',
+                attributes: {
+                    pageName: 'filePreview'
+                },
+                state: {
+                    selectedRecordId: docId
+                }
+            });
+        }
     }
 }

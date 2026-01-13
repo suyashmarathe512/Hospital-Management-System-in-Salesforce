@@ -1,103 +1,117 @@
 <template>
-    <lightning-card>
-        <div slot="title" class="slds-media slds-media_center slds-p-around_small">
-            <div class="slds-media__figure">
-                <div class="header-icon-wrapper">
-                    <lightning-icon icon-name="standard:visit_templates" variant="inverse" size="medium"></lightning-icon>
-                </div>
-            </div>
-            <div class="slds-media__body">
-                <h2 class="slds-card__header-title">
-                    <span class="slds-text-heading_medium slds-truncate">My Consultations</span>
-                </h2>
-                <p class="slds-text-body_small slds-text-color_weak">View your consultation history and details</p>
-            </div>
+    <div class="slds-var-p-around_medium">
+        
+        <!-- Header -->
+        <div class="slds-var-m-bottom_medium">
+            <h2 class="slds-text-heading_medium slds-var-m-bottom_small">Past Consultations</h2>
+            <p class="slds-text-body_small slds-text-color_weak">Your medical visit history</p>
         </div>
 
-        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-            <template if:true={consultations}>
-                <div class="datatable-container">
-                    <lightning-datatable
-                        key-field="Id"
-                        data={consultations}
-                        columns={columns}
-                        sorted-by={sortedBy}
-                        sorted-direction={sortedDirection}
-                        onsort={handleSort}
-                        onrowaction={handleRowAction}
-                        hide-checkbox-column
-                        density="comfy">
-                    </lightning-datatable>
-                </div>
-            </template>
-            <template if:false={consultations}>
-                <div class="slds-align_absolute-center slds-p-around_large empty-state-container">
-                    <div class="slds-text-align_center">
-                        <lightning-icon icon-name="utility:info_alt" size="large" class="slds-m-bottom_small empty-icon"></lightning-icon>
-                        <h3 class="slds-text-heading_small slds-m-bottom_xx-small">No Consultations Found</h3>
-                        <p class="slds-text-color_weak">You have no past consultations on record.</p>
-                    </div>
-                </div>
-            </template>
-        </div>
+        <!-- Loading State -->
+        <template if:true={isLoading}>
+            <div class="slds-var-p-around_medium">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
 
-        <!-- Consultation Details Modal -->
-        <template if:true={isModalOpen}>
-            <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open">
-                <div class="slds-modal__container">
-                    <header class="slds-modal__header">
-                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeModal}>
-                            <lightning-icon icon-name="utility:close" variant="inverse" size="small"></lightning-icon>
-                            <span class="slds-assistive-text">Close</span>
-                        </button>
-                        <h2 class="slds-text-heading_medium slds-hyphenate">Consultation Details</h2>
-                    </header>
-                    <div class="slds-modal__content slds-p-around_medium">
-                        <div class="slds-grid slds-wrap slds-gutters">
-                            <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
-                                <div class="slds-form-element">
-                                    <label class="slds-form-element__label">Consultation Number</label>
-                                    <div class="slds-form-element__control slds-border_bottom">{selectedConsultation.Name}</div>
-                                </div>
-                            </div>
-                            <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
-                                <div class="slds-form-element">
-                                    <label class="slds-form-element__label">Date of Visit</label>
-                                    <div class="slds-form-element__control slds-border_bottom">
-                                        <lightning-formatted-date-time value={selectedConsultation.Date_of_Visit__c}></lightning-formatted-date-time>
+        <!-- Empty State -->
+        <template if:false={isLoading}>
+            <template if:false={hasConsultations}>
+                <div class="slds-illustration slds-illustration_small slds-text-align_center slds-var-m-top_large">
+                    <div class="slds-text-heading_small">No consultations found.</div>
+                    <p class="slds-text-body_regular slds-text-color_weak">You haven't visited a doctor yet.</p>
+                </div>
+            </template>
+
+            <!-- Consultation List -->
+            <div class="consultation-list">
+                <template for:each={consultations} for:item="con">
+                    <div key={con.id} class="slds-card slds-var-m-bottom_medium consultation-card">
+                        
+                        <!-- Card Header / Summary -->
+                        <div class="slds-p-around_medium card-header" onclick={handleToggle} data-id={con.id}>
+                            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                <div>
+                                    <div class="slds-text-heading_small slds-text-link_reset">
+                                        {con.doctorName}
+                                    </div>
+                                    <div class="slds-text-body_small slds-text-color_weak">
+                                        <lightning-formatted-date-time value={con.visitDate} year="numeric" month="short" day="2-digit"></lightning-formatted-date-time>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
-                                <div class="slds-form-element">
-                                    <label class="slds-form-element__label">Doctor</label>
-                                    <div class="slds-form-element__control slds-border_bottom">{selectedConsultation.DoctorName}</div>
-                                </div>
-                            </div>
-                            <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
-                                <div class="slds-form-element">
-                                    <label class="slds-form-element__label">Next Visit Date</label>
-                                    <div class="slds-form-element__control slds-border_bottom">
-                                        <lightning-formatted-date-time value={selectedConsultation.Next_Visit__c}></lightning-formatted-date-time>
+                                <div class="slds-text-align_right">
+                                    <div class="slds-text-heading_small">
+                                        <lightning-formatted-number value={con.visitCharges} format-style="currency" currency-code="USD"></lightning-formatted-number>
                                     </div>
+                                    <span class={con.badgeClass}>{con.status}</span>
                                 </div>
                             </div>
-                            <div class="slds-col slds-size_1-of-2 slds-p-bottom_small">
-                                <div class="slds-form-element">
-                                    <label class="slds-form-element__label">Visit Charges</label>
-                                    <div class="slds-form-element__control slds-border_bottom">
-                                        <lightning-formatted-number value={selectedConsultation.Visit_Charges__c} format-style="currency"></lightning-formatted-number>
-                                    </div>
-                                </div>
+                            <div class="slds-text-body_small slds-text-color_weak slds-var-m-top_x-small">
+                                {con.name}
                             </div>
                         </div>
+
+                        <!-- Expanded Detail Drawer -->
+                        <template if:true={con.isExpanded}>
+                            <div class="slds-border_top slds-theme_shade detail-drawer">
+                                
+                                <!-- Detail Content -->
+                                <template if:true={con.isExpanded}>
+                                    <div class="slds-p-around_medium">
+                                        
+                                        <!-- A. Overview -->
+                                        <div class="slds-grid slds-wrap slds-gutters_small slds-var-m-bottom_medium">
+                                            <div class="slds-col slds-size_1-of-2">
+                                                <p class="slds-text-title_caps slds-text-color_weak">Appointment</p>
+                                                <p>{currentDetail.appointmentName}</p>
+                                            </div>
+                                            <div class="slds-col slds-size_1-of-2">
+                                                <p class="slds-text-title_caps slds-text-color_weak">Charges</p>
+                                                <lightning-formatted-number value={currentDetail.visitCharges} format-style="currency" currency-code="INR"></lightning-formatted-number>
+                                            </div>
+                                        </div>
+
+                                        <!-- B & C. Prescription & Medications -->
+                                        <template if:true={currentDetail.prescription}>
+                                            <div class="slds-box slds-box_small slds-theme_default slds-var-m-bottom_small">
+                                                <div class="slds-media slds-media_center slds-var-m-bottom_small">
+                                                    <div class="slds-media__figure">
+                                                        <lightning-icon icon-name="standard:medicine" size="small"></lightning-icon>
+                                                    </div>
+                                                    <div class="slds-media__body">
+                                                        <h3 class="slds-text-heading_small">Prescription Issued</h3>
+                                                    </div>
+                                                </div>
+                                                <ul class="slds-list_dotted">
+                                                    <template for:each={currentDetail.prescription.medications} for:item="med">
+                                                        <li key={med.name} class="slds-var-m-bottom_xx-small">
+                                                            <strong>{med.name}</strong> - {med.dosage}
+                                                        </li>
+                                                    </template>
+                                                </ul>
+                                            </div>
+
+                                            <!-- D. Billing -->
+                                            <template if:true={currentDetail.billing}>
+                                                <lightning-button label="View Consultation Bill" icon-name="utility:download" onclick={handleViewBill} data-doc-id={currentDetail.billing.documentId} class="slds-var-m-top_small"></lightning-button>
+                                            </template>
+                                            <template if:false={currentDetail.billing}>
+                                                <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_small">Billing document not available.</p>
+                                            </template>
+                                        </template>
+
+                                        <template if:false={currentDetail.prescription}>
+                                            <div class="slds-text-align_center slds-text-color_weak slds-var-p-vertical_small">
+                                                No prescription was issued for this visit.
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
-                    <footer class="slds-modal__footer">
-                        <button class="slds-button slds-button_neutral" onclick={closeModal}>Close</button>
-                    </footer>
-                </div>
-            </section>
-            <div class="slds-backdrop slds-backdrop_open"></div>
+                </template>
+            </div>
         </template>
-    </lightning-card>
+    </div>
 </template>
