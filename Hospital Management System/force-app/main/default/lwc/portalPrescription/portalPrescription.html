@@ -1,9 +1,9 @@
 <template>
     <lightning-card>
-        <div slot="title" class="slds-media slds-media_center slds-p-around_small">
+        <div slot="title" class="slds-media slds-media_center slds-p-around_small header-container">
             <div class="slds-media__figure">
                 <div class="header-icon-wrapper">
-                    <lightning-icon icon-name="standard:prescription" variant="inverse" size="medium"></lightning-icon>
+                    <lightning-icon icon-name="standard:medicine" variant="inverse" size="medium"></lightning-icon>
                 </div>
             </div>
             <div class="slds-media__body">
@@ -12,24 +12,68 @@
                 </h2>
                 <p class="slds-text-body_small slds-text-color_weak">View your prescription history and medications</p>
             </div>
+            <div class="slds-media__figure slds-media__figure_reverse">
+                <lightning-button-group>
+                    <lightning-button label="Active" variant={activeVariant} onclick={handleFilterActive}></lightning-button>
+                    <lightning-button label="All" variant={allVariant} onclick={handleFilterAll}></lightning-button>
+                </lightning-button-group>
+            </div>
         </div>
         <div class="slds-p-horizontal_medium slds-p-bottom_medium">
-            <template if:true={prescriptions}>
-                <div class="datatable-container">
-                    <lightning-datatable
-                        key-field="Id"
-                        data={prescriptions}
-                        columns={columns}
-                        sorted-by={sortedBy}
-                        sorted-direction={sortedDirection}
-                        onsort={handleSort}
-                        onrowaction={handleRowAction}
-                        hide-checkbox-column
-                        density="comfy">
-                    </lightning-datatable>
+            <!-- Loading State -->
+            <template if:true={summaryLoading}>
+                <div class="slds-p-around_medium">
+                    <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
                 </div>
             </template>
-            <template if:false={prescriptions}>
+            <!-- Data State -->
+            <template if:true={hasPrescriptions}>
+                <lightning-layout multiple-rows="true" pull-to-boundary="small">
+                    <template for:each={filteredPrescriptions} for:item="p">
+                        <lightning-layout-item key={p.id} size="12" medium-device-size="6" large-device-size="4" padding="around-small">
+                            <article class="slds-card slds-card_boundary card-clickable" onclick={handleViewDetails} data-id={p.id}>
+                                <div class="slds-card__header slds-grid">
+                                    <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                                        <div class="slds-media__figure">
+                                            <lightning-icon icon-name="standard:prescription" size="small"></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <h2 class="slds-card__header-title">
+                                                <span class="slds-text-heading_small slds-truncate" title={p.name}>{p.name}</span>
+                                            </h2>
+                                            <p class="slds-text-body_small slds-text-color_weak">
+                                                <lightning-formatted-date-time value={p.createdDate} year="numeric" month="short" day="numeric"></lightning-formatted-date-time>
+                                            </p>
+                                        </div>
+                                        <div class="slds-no-flex">
+                                            <template if:true={p.isActive}>
+                                                <lightning-badge label="Active" class="slds-theme_success"></lightning-badge>
+                                            </template>
+                                        </div>
+                                    </header>
+                                </div>
+                                <div class="slds-card__body slds-card__body_inner">
+                                    <div class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Doctor</div>
+                                    <div class="slds-text-body_regular slds-truncate slds-m-bottom_small" title={p.doctorName}>{p.doctorName}</div>
+                                    
+                                    <div class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Notes</div>
+                                    <div class="slds-text-body_small slds-line-clamp_2" title={p.shortNotes}>{p.shortNotes}</div>
+                                </div>
+                                <footer class="slds-card__footer slds-border_top">
+                                    <div class="slds-grid slds-grid_align-spread">
+                                        <span class="slds-text-link">View Details</span>
+                                        <template if:true={p.hasBilling}>
+                                            <lightning-icon icon-name="utility:attach" size="x-small" title="Bill Attached"></lightning-icon>
+                                        </template>
+                                    </div>
+                                </footer>
+                            </article>
+                        </lightning-layout-item>
+                    </template>
+                </lightning-layout>
+            </template>
+            <!-- Empty State -->
+            <template if:false={hasPrescriptions}>
                 <div class="slds-align_absolute-center slds-p-around_large empty-state-container">
                     <div class="slds-text-align_center">
                         <lightning-icon icon-name="utility:info_alt" size="large" class="slds-m-bottom_small empty-icon"></lightning-icon>
@@ -51,51 +95,80 @@
                         <h2 class="slds-text-heading_medium slds-hyphenate">Prescription Details</h2>
                     </header>
                     <div class="slds-modal__content slds-p-around_medium">
-                        <!-- Header Info -->
-                        <div class="slds-grid slds-wrap slds-gutters slds-p-bottom_medium slds-border_bottom">
-                            <div class="slds-col slds-size_1-of-3">
-                                <div class="slds-text-title_caps slds-text-color_weak">Prescription #</div>
-                                <div class="slds-text-body_regular">{selectedPrescription.Name}</div>
-                            </div>
-                            <div class="slds-col slds-size_1-of-3">
-                                <div class="slds-text-title_caps slds-text-color_weak">Doctor</div>
-                                <div class="slds-text-body_regular">{selectedPrescription.DoctorName}</div>
-                            </div>
-                            <div class="slds-col slds-size_1-of-3">
-                                <div class="slds-text-title_caps slds-text-color_weak">Date</div>
-                                <div class="slds-text-body_regular">
-                                    <lightning-formatted-date-time value={selectedPrescription.Prescription_Date__c}></lightning-formatted-date-time>
-                                </div>
-                            </div>
-                        </div>
-                        <template if:true={selectedPrescription.Notes}>
-                            <div class="slds-p-vertical_small slds-border_bottom">
-                                <div class="slds-text-title_caps slds-text-color_weak">Notes</div>
-                                <div class="slds-text-body_regular">{selectedPrescription.Notes}</div>
+                        <template if:true={detailsLoading}>
+                            <div class="slds-p-around_large slds-is-relative" style="min-height: 200px;">
+                                <lightning-spinner alternative-text="Loading Details" size="medium"></lightning-spinner>
                             </div>
                         </template>
-                        <!-- Medications Table -->
-                        <h3 class="slds-text-heading_small slds-p-vertical_small">Medications</h3>
-                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
-                            <thead>
-                                <tr class="slds-line-height_reset">
-                                    <th class="" scope="col"><div class="slds-truncate" title="Medication">Medication</div></th>
-                                    <th class="" scope="col"><div class="slds-truncate" title="Dosage">Dosage</div></th>
-                                    <th class="" scope="col"><div class="slds-truncate" title="Frequency">Frequency</div></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template for:each={selectedMedications} for:item="med">
-                                    <tr key={med.MedicationName}>
-                                        <td data-label="Medication"><div class="slds-truncate" title={med.MedicationName}>{med.MedicationName}</div></td>
-                                        <td data-label="Dosage"><div class="slds-truncate" title={med.Dosage}>{med.Dosage}</div></td>
-                                        <td data-label="Frequency"><div class="slds-truncate" title={med.Frequency}>{med.Frequency}</div></td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                        <template if:false={selectedMedications.length}>
-                            <p class="slds-text-align_center slds-p-around_small slds-text-color_weak">No medications listed for this prescription.</p>
+                        <template if:false={detailsLoading}>
+                            <!-- Header Info -->
+                            <div class="slds-grid slds-wrap slds-gutters slds-p-bottom_medium slds-border_bottom">
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_small">
+                                    <div class="slds-text-title_caps slds-text-color_weak">Prescription #</div>
+                                    <div class="slds-text-body_regular slds-text-heading_small">{selectedPrescription.name}</div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_small">
+                                    <div class="slds-text-title_caps slds-text-color_weak">Doctor</div>
+                                    <div class="slds-text-body_regular">{selectedPrescription.doctorName}</div>
+                                </div>
+                                <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-m-bottom_small">
+                                    <div class="slds-text-title_caps slds-text-color_weak">Date</div>
+                                    <div class="slds-text-body_regular">
+                                        <lightning-formatted-date-time value={selectedPrescription.createdDate} year="numeric" month="long" day="numeric"></lightning-formatted-date-time>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Notes -->
+                            <template if:true={selectedPrescription.notes}>
+                                <div class="slds-p-vertical_medium slds-border_bottom">
+                                    <div class="slds-text-title_caps slds-text-color_weak slds-m-bottom_x-small">Doctor's Notes</div>
+                                    <div class="slds-text-body_regular slds-text-longform">{selectedPrescription.notes}</div>
+                                </div>
+                            </template>
+                            <!-- Medications Table -->
+                            <div class="slds-p-vertical_medium">
+                                <h3 class="slds-text-heading_small slds-m-bottom_small">Medications</h3>
+                                <div class="slds-scrollable_x">
+                                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                                        <thead>
+                                            <tr class="slds-line-height_reset">
+                                                <th scope="col"><div class="slds-truncate" title="Medication">Medication</div></th>
+                                                <th scope="col"><div class="slds-truncate" title="Dosage">Dosage</div></th>
+                                                <th scope="col"><div class="slds-truncate" title="Frequency">Frequency</div></th>
+                                                <th scope="col"><div class="slds-truncate" title="Instructions">Instructions</div></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template for:each={selectedMedications} for:item="med">
+                                                <tr key={med.name}>
+                                                    <td data-label="Medication"><div class="slds-truncate" title={med.name}><strong>{med.name}</strong></div></td>
+                                                    <td data-label="Dosage"><div class="slds-truncate" title={med.dosage}>{med.dosage}</div></td>
+                                                    <td data-label="Frequency"><div class="slds-truncate" title={med.frequency}>{med.frequency}</div></td>
+                                                    <td data-label="Instructions"><div class="slds-truncate" title={med.instructions}>{med.instructions}</div></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                    <template if:false={selectedMedications.length}>
+                                        <p class="slds-text-align_center slds-p-around_small slds-text-color_weak">No medications listed.</p>
+                                    </template>
+                                </div>
+                            </div>
+                            <!-- Attachment Download -->
+                            <template if:true={selectedPrescription.contentVersionId}>
+                                <div class="slds-p-vertical_medium slds-border_top slds-theme_shade slds-p-horizontal_small slds-m-top_small slds-rounded">
+                                    <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                        <div>
+                                            <div class="slds-text-title_caps slds-text-color_weak">Billing Document</div>
+                                            <div class="slds-text-body_regular" title={selectedPrescription.contentTitle}>{selectedPrescription.contentTitle}</div>
+                                        </div>
+                                        <button class="slds-button slds-button_neutral" onclick={handlePreview}>
+                                            <lightning-icon icon-name="utility:preview" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                            Preview PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                         </template>
                     </div>
                     <footer class="slds-modal__footer">

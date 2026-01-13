@@ -1,31 +1,54 @@
-.header-icon-wrapper {
-    background-color: #0070d2; /* Salesforce Brand Blue */
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
+.header-icon-wrapper{
+    background:linear-gradient(135deg,#0070d2 0%,#005fb2 100%);
+    padding:0.75rem;
+    border-radius:0.5rem;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 4px 6px rgba(0,112,210,0.2);
 }
 
-.datatable-container {
+/* Card Styling */
+.card-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    height: 100%;
     border: 1px solid #dddbda;
-    border-radius: 0.25rem;
+    box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.card-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.1);
+    border-color: #0070d2;
+}
+
+.slds-line-clamp_2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    animation: fadeIn 0.5s ease-in-out;
 }
 
-.empty-state-container {
-    background-color: #f3f2f2;
-    border-radius: 0.25rem;
-    border: 1px dashed #c9c7c5;
+.empty-state-container{
+    background-color:#f8f9fa;
+    border-radius:0.5rem;
+    padding:4rem 2rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    border:1px dashed #d8dde6;
 }
-
-.empty-icon {
-    --sds-c-icon-color-foreground-default: #706e6b;
+.empty-icon{
+    margin-bottom:1.5rem;
+    opacity:0.6;
+    --sds-c-icon-color-foreground-default:#706e6b;
 }
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes fadeIn{
+    from{opacity:0;transform:translateY(10px);}
+    to{opacity:1;transform:translateY(0);}
+}
+.slds-modal__content{
+    animation:fadeIn 0.3s ease-out;
 }

@@ -1,101 +1,87 @@
-import { LightningElement, track } from 'lwc';
-import getPrescriptions from '@salesforce/apex/PortalPrescriptionsController.getPrescriptions';
-const COLUMNS = [
-    { 
-        label: 'Prescription Number', 
-        fieldName: 'Name', 
-        type: 'button', 
-        typeAttributes: { label: { fieldName: 'Name' }, variant: 'base' },
-        sortable: true 
-    },
-    { label: 'Doctor Name', fieldName: 'DoctorName', type: 'text', sortable: true },
-    { label: 'Date', fieldName: 'Prescription_Date__c', type: 'date', sortable: true }
-];
-export default class PortalPrescription extends LightningElement {
-    @track prescriptions = [];
-    @track columns = COLUMNS;
-    @track groupedPrescriptions = [];
-    @track sortedBy;
-    @track sortedDirection = 'asc';
-    
-    // Modal State
+import { LightningElement, track, wire } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
+import getPrescriptionSummaries from '@salesforce/apex/PortalPrescriptionsController.getPrescriptionSummaries';
+import getPrescriptionDetails from '@salesforce/apex/PortalPrescriptionsController.getPrescriptionDetails';
+
+export default class PortalPrescription extends NavigationMixin(LightningElement) {
+    @track accountId;
+    @track allPrescriptions = [];
     @track isModalOpen = false;
     @track selectedPrescription = {};
     @track selectedMedications = [];
+    // Loading states
+    @track summaryLoading = true;
+    @track detailsLoading = false;
+    // Filter state
+    @track filterType = 'Active'; // 'Active' or 'All'
 
     connectedCallback() {
-        this.fetchData();
+        this.accountId = sessionStorage.getItem('portalAccountId');
     }
-
-    async fetchData() {
-        const accountId = window.sessionStorage.getItem('portalAccountId');
-        try {
-            const data = await getPrescriptions({ accountId: accountId });
-            this.prescriptions = data;
-            this.processConsultationGroups(data);
-        } catch (error) {
-            console.error('Error fetching prescriptions', error);
+    @wire(getPrescriptionSummaries, { accountId: '$accountId' })
+    wiredPrescriptions({ error, data }) {
+        this.summaryLoading = false;
+        if (data) {
+            this.allPrescriptions = data;
+        } else if (error) {
+            console.error('Error fetching prescriptions:', error);
+            this.allPrescriptions = [];
         }
     }
-
-    handleSort(event) {
-        const { fieldName: sortedBy, sortDirection } = event.detail;
-        const cloneData = [...this.prescriptions];
-
-        cloneData.sort(this.sortBy(sortedBy, sortDirection === 'asc' ? 1 : -1));
-        this.prescriptions = cloneData;
-        this.sortedBy = sortedBy;
-        this.sortedDirection = sortDirection;
-    }
-
-    sortBy(field, reverse, primer) {
-        const key = primer
-            ? function (x) { return primer(x[field]); }
-            : function (x) { return x[field]; };
-
-        return function (a, b) {
-            a = key(a);
-            b = key(b);
-            return reverse * ((a > b) - (b > a));
-        };
-    }
-
-    handleRowAction(event) {
-        const row = event.detail.row;
-        this.selectedPrescription = row;
-        
-        // Parse medications if they are not already an array (though they should be from controller)
-        if (row.Medications) {
-            this.selectedMedications = Array.isArray(row.Medications) ? row.Medications : [];
-        } else {
-            this.selectedMedications = [];
+    get filteredPrescriptions() {
+        if (this.filterType === 'Active') {
+            return this.allPrescriptions.filter(p => p.isActive);
         }
-        
+        return this.allPrescriptions;
+    }
+    get hasPrescriptions() {
+        return this.filteredPrescriptions && this.filteredPrescriptions.length > 0;
+    }
+    get activeVariant() {
+        return this.filterType === 'Active' ? 'brand' : 'neutral';
+    }
+    get allVariant() {
+        return this.filterType === 'All' ? 'brand' : 'neutral';
+    }
+    handleFilterActive() {
+        this.filterType = 'Active';
+    }
+
+    handleFilterAll() {
+        this.filterType = 'All';
+    }
+    handleViewDetails(event) {
+        const prescriptionId = event.currentTarget.dataset.id;
         this.isModalOpen = true;
+        this.detailsLoading = true;
+        this.selectedPrescription = {}; // Clear previous
+        this.selectedMedications = [];
+        getPrescriptionDetails({ prescriptionId })
+            .then(result => {
+                this.selectedPrescription = result;
+                this.selectedMedications = result.medications || [];
+                this.detailsLoading = false;
+            })
+            .catch(error => {
+                console.error('Error fetching details:', error);
+                this.detailsLoading = false;
+            });
     }
 
+    handlePreview() {
+        if (this.selectedPrescription.contentDocumentId) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__namedPage',
+                attributes: {
+                    pageName: 'filePreview'
+                },
+                state: {
+                    selectedRecordId: this.selectedPrescription.contentDocumentId
+                }
+            });
+        }
+    }
     closeModal() {
         this.isModalOpen = false;
-    }
-
-    processConsultationGroups(data) {
-        const groups = {};
-        data.forEach(item => {
-            // Group by Date and Doctor to simulate a Consultation view
-            const date = item.Prescription_Date__c || 'Unknown Date';
-            const doctor = item.DoctorName || 'Unknown Doctor';
-            const key = `${date}-${doctor}`;
-
-            if (!groups[key]) {
-                groups[key] = {
-                    id: key,
-                    title: `${date} - ${doctor}`,
-                    items: []
-                };
-            }
-            groups[key].items.push(item);
-        });
-        // Sort groups by date descending (newest consultations first)
-        this.groupedPrescriptions = Object.values(groups).sort((a, b) => b.id.localeCompare(a.id));
     }
 }
