@@ -1,4 +1,5 @@
-public with sharing class BillTriggerHandler{
+@RestResource(urlMapping='/BillEmail/*')
+global with sharing class BillTriggerHandler{
     private ApexPages.StandardController stdController;
     // Constructor to support Visualforce Extension
     public BillTriggerHandler(ApexPages.StandardController stdController){
@@ -12,7 +13,7 @@ public with sharing class BillTriggerHandler{
         }
     }
     @AuraEnabled
-    public static void sendBillEmail(List<Id> billIds){
+    global static void sendBillEmail(List<Id> billIds){
         // Query Bill details and related Line Items
         List<Bill__c> bills=[SELECT 
                                     Id,Name,Billing_Date__c,Tax_Percentage__c,Sub_Total__c,Total_Amount__c,
@@ -33,13 +34,13 @@ public with sharing class BillTriggerHandler{
         List<ContentVersion> cvList=new List<ContentVersion>();
         List<Bill__c> billsWithPdf=new List<Bill__c>();
         // 1. Generate PDFs and Prepare ContentVersions
-        for(Bill__c bill : bills){
+        for(Bill__c bill:bills){
             PageReference pdf=Page.BillPDF;
             pdf.getParameters().put('id',bill.Id);
             Blob pdfBlob;
             if(!Test.isRunningTest()){
                 pdfBlob=pdf.getContentAsPDF();
-            } else{
+            }else{
                 pdfBlob=Blob.valueOf('Test PDF');
             }
             billPdfMap.put(bill.Id,pdfBlob);
@@ -71,14 +72,14 @@ public with sharing class BillTriggerHandler{
                                         IN
                                             :cvList];
         Map<Id,Id> billIdToContentDocId=new Map<Id,Id>();
-        for(ContentVersion cv : insertedCVs){
+        for(ContentVersion cv:insertedCVs){
             if(cvIdToBillId.containsKey(cv.Id)){
                 billIdToContentDocId.put(cvIdToBillId.get(cv.Id),cv.ContentDocumentId);
             }
         }
         // 4. Create ContentDocumentLinks and Emails
         List<ContentDocumentLink> cdLinks=new List<ContentDocumentLink>();
-        for(Bill__c bill : bills){
+        for(Bill__c bill:bills){
             Id contentDocId=billIdToContentDocId.get(bill.Id);
             // Link to Patient,Consultation,Prescription
             if(contentDocId!=null){
@@ -86,7 +87,7 @@ public with sharing class BillTriggerHandler{
                 if(bill.Patient__c!=null) linkedEntityIds.add(bill.Patient__c);
                 if(bill.Consultation__c!=null) linkedEntityIds.add(bill.Consultation__c);
                 if(bill.Prescription__c!=null) linkedEntityIds.add(bill.Prescription__c);
-                for(Id linkedId : linkedEntityIds){
+                for(Id linkedId:linkedEntityIds){
                     ContentDocumentLink cdl=new ContentDocumentLink();
                     cdl.ContentDocumentId=contentDocId;
                     cdl.LinkedEntityId=linkedId;
@@ -105,7 +106,7 @@ public with sharing class BillTriggerHandler{
                 body+='Please find attached the invoice for your recent visit.\n';
                 body+='--------------------------------------------------\n';
                 body+='Bill Number: '+bill.Name+'\n';
-                body+='Date: ' +(bill.Billing_Date__c!=null ? bill.Billing_Date__c.format() : '')+'\n';
+                body+='Date: ' +(bill.Billing_Date__c!=null ? bill.Billing_Date__c.format():'')+'\n';
                 body+='Total Amount: '+bill.Total_Amount__c+'\n';
                 body+='--------------------------------------------------\n\n';
                 body+='If you have any questions regarding this bill,please contact our billing department.\n\n';
@@ -123,6 +124,36 @@ public with sharing class BillTriggerHandler{
         }
         if(!emails.isEmpty()){
             Messaging.sendEmail(emails);
+        }
+    }
+    @HttpPost
+    global static void doPost(){
+        try{
+            RestRequest req=RestContext.request;
+            String body=req.requestBody.toString();
+            Map<String,Object> params=(Map<String,Object>)JSON.deserializeUntyped(body);
+            List<Object> idsObj=(List<Object>)params.get('prescriptionIds');
+            List<Id> presIds=new List<Id>();
+            for(Object obj:idsObj){
+                presIds.add((Id)obj);
+            }
+            // Query Bills based on Prescription Ids
+            List<Bill__c> bills=[SELECT
+                                    Id
+                                FROM
+                                    Bill__c
+                                WHERE
+                                    Prescription__c
+                                IN
+                                    :presIds];
+            List<Id> billIds=new List<Id>();
+            for(Bill__c b:bills){
+                billIds.add(b.Id);
+            }
+            sendBillEmail(billIds);
+        }catch(Exception e){
+            RestContext.response.statusCode=500;
+            RestContext.response.responseBody=Blob.valueOf('Error: '+e.getMessage());
         }
     }
 }

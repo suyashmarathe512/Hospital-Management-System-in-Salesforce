@@ -59,7 +59,7 @@ public without sharing class PortalPrescriptionsController{
         try{
             Prescription__c p=[SELECT
                                     Id,Name,Doctor_s_Name__c,CreatedDate,Notes__c,
-                            (SELECT 
+                        (SELECT 
                                         Name,Dosage__c,Frequency__c,Duration_Days__c
                                     FROM
                                         Medications__r)
@@ -135,7 +135,6 @@ public without sharing class PortalPrescriptionsController{
         @AuraEnabled public String frequency;
         @AuraEnabled public Decimal durationdays;
     }
-
     /*****************************************************************************************************
      * @Author:       CRM Team Innovation
      * @MethodName:   getBillDetails
@@ -184,36 +183,36 @@ public without sharing class PortalPrescriptionsController{
     @AuraEnabled
     public static void emailInvoicePdf(Id prescriptionId){
         try{
-            Prescription__c pres=[SELECT 
-                                    Id,Name,Account__r.PersonEmail,Account__r.Name
-                                FROM
-                                    Prescription__c
-                                WHERE
-                                    Id=:prescriptionId
-                                LIMIT 1];
-            if(String.isBlank(pres.Account__r.PersonEmail)){
-                throw new AuraHandledException('Patient email not found on record.');
+            // Retrieve the External ID(Server Org's Prescription ID)
+            Prescription__c pres=[SELECT
+                                        Prescription_External_ID__c
+                                    FROM
+                                        Prescription__c
+                                    WHERE
+                                        Id=:prescriptionId
+                                    LIMIT 1];
+            if(String.isBlank(pres.Prescription_External_ID__c)){
+                throw new AuraHandledException('External ID not found for this prescription.');
             }
-            PageReference pdf=Page.InvoicePDF;
-            pdf.getParameters().put('id',prescriptionId);
-            Blob pdfBlob;
-            if(Test.isRunningTest()){
-                pdfBlob=Blob.valueOf('Test PDF Content');
-            }else{
-                pdfBlob=pdf.getContentAsPDF();
-            }
-            Messaging.SingleEmailMessage email=new Messaging.SingleEmailMessage();
-            email.setToAddresses(new String[]{ pres.Account__r.PersonEmail });
-            email.setSubject('Invoice for Prescription: '+pres.Name);
-            email.setPlainTextBody('Dear '+pres.Account__r.Name+',\n\nPlease find attached the invoice for your prescription.\n\nRegards,\nCommunity General Hospital');
-            Messaging.EmailFileAttachment attach=new Messaging.EmailFileAttachment();
-            attach.setFileName('Invoice_'+pres.Name+'.pdf');
-            attach.setBody(pdfBlob);
-            attach.setContentType('application/pdf');
-            email.setFileAttachments(new Messaging.EmailFileAttachment[]{ attach });
-            Messaging.sendEmail(new Messaging.SingleEmailMessage[]{ email });
+            // Call the REST endpoint asynchronously to avoid "Callout loop not allowed"
+            sendEmailAsync(pres.Prescription_External_ID__c);
         }catch(Exception e){
             throw new AuraHandledException('Error sending email: '+e.getMessage());
+        }
+    }
+    @future(callout=true)
+    private static void sendEmailAsync(String externalId){
+        HttpRequest req=new HttpRequest();
+        req.setEndpoint('callout:Hospital_Server/services/apexrest/BillEmail/');
+        req.setMethod('POST');
+        req.setHeader('Content-Type','application/json');
+        Map<String,Object> payload=new Map<String,Object>();
+        payload.put('prescriptionIds',new List<String>{externalId});
+        req.setBody(JSON.serialize(payload));
+        Http http=new Http();
+        HttpResponse res=http.send(req);
+        if(res.getStatusCode()!=200){
+            System.debug(LoggingLevel.ERROR, 'Failed to send email: '+res.getBody());
         }
     }
 }

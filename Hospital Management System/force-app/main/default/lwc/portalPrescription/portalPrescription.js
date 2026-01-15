@@ -131,7 +131,7 @@ export default class PortalPrescription extends NavigationMixin(LightningElement
         // Flatten the JSON structure for easier use in the template
         const items=data.Bill_Line_Items__r&&data.Bill_Line_Items__r.records 
         ?data.Bill_Line_Items__r.records.map(item=>({
-                id:item.Id || Math.random(), // Fallback ID
+                id:item.Id || Math.random(),
                 medication:item.Medication__r?item.Medication__r.Name:'Unknown',
                 price:item.Unit_Price__c,
                 quantity:item.Quantity__c,
