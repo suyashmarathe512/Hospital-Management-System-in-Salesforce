@@ -46,7 +46,7 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
     }
     validateInputs(selectors=[]){
         let allValid=true;
-        selectors.forEach((dataId) =>{
+        selectors.forEach((dataId)=>{
             const input=this.template.querySelector(`[data-id="${dataId}"]`);
             if(input){
                 input.reportValidity();
@@ -56,15 +56,23 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
         return allValid;
     }
     // Handlers:Login form
-    handleLoginEmailChange=(e) =>{
+    handleLoginEmailChange=(e)=>{
         this.loginEmail=e.target.value;
+        this.errorMessage='';
     };
-    handleLoginPasswordChange=(e) =>{
+    handleLoginPasswordChange=(e)=>{
         this.loginPassword=e.target.value;
+        this.errorMessage='';
+    };
+    handleLoginKeyUp=(e)=>{
+        if(e.keyCode===13){
+            this.handleLogin();
+        }
     };
     async handleLogin(){
         this.errorMessage='';
         // Client-side validation first
+        this.loginEmail = this.loginEmail ? this.loginEmail.trim() :'';
         const ok=this.validateInputs(['loginEmail','loginPassword']);
         if(!ok){
             this.errorMessage='Invalid email or password';
@@ -83,20 +91,34 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
                 window.location.href='/Healthxi/portalprofile';
         }else{
                 this.errorMessage='Invalid email or password';
+                this.dispatchEvent(
+                    new ShowToastEvent({
+                        title:'Login Failed',
+                        message:this.errorMessage,
+                        variant:'error'
+                    })
+                );
             }
     }catch(e){
             this.errorMessage='Invalid email or password';
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title:'Login Error',
+                    message:'An unexpected error occurred. Please try again.',
+                    variant:'error'
+                })
+            );
     }finally{
             this.isLoggingIn=false;
         }
     }
     // Create flow
-    openCreate=() =>{
+    openCreate=()=>{
         this.isCreateMode=true;
         this.createMessage='';
         this.createError='';
     };
-    closeCreate=() =>{
+    closeCreate=()=>{
         this.isCreateMode=false;
         this.createMessage='';
         this.createError='';
@@ -121,7 +143,7 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
         this.otherState='';
         this.otherCountry='';
     };
-    handleCreateChange=(e) =>{
+    handleCreateChange=(e)=>{
         const id=e.target.dataset.id;
         const val=e.target.value;
         const fieldMap={
@@ -148,6 +170,7 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
         if(fieldMap[id]){
             this[fieldMap[id]]=val;
         }
+        this.createError='';
         // live-validate the edited input
         const input=e.target;
         if(input&&typeof input.reportValidity === 'function'){
@@ -159,13 +182,14 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
         this.createError='';
         // Sync values from DOM to ensure state is current(fixes autofill issues)
         const inputs=this.template.querySelectorAll('lightning-input,lightning-combobox');
-        inputs.forEach(input =>{
+        inputs.forEach(input=>{
             const id=input.dataset.id;
             if(id){
                 this[id]=input.value;
             }
         });
         // Also validate explicitly the two inputs to ensure browser validity runs
+        this.createEmail = this.createEmail ? this.createEmail.trim() :'';
         const ok=this.validateInputs(['lastName','createEmail','createPassword']);
         if(!ok){
             this.createError='Please check the required fields.';
@@ -194,11 +218,17 @@ export default class PortalLogin extends NavigationMixin(LightningElement){
                 otherState:this.otherState,
                 otherCountry:this.otherCountry
             };
-            console.log('Sending create request:',JSON.stringify(requestPayload));
             await createPersonAccount({req:requestPayload });
             this.createMessage='Account created successfully. Please log in with your email and password.';
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title:'Success',
+                    message:'Account created successfully!',
+                    variant:'success'
+                })
+            );
             // Return to login after short delay and refresh the page
-            setTimeout(() =>{
+            setTimeout(()=>{
                 this.closeCreate();
                 try{
                     window.location.reload();

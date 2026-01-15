@@ -100,6 +100,62 @@
                                 <lightning-spinner alternative-text="Loading Details" size="medium"></lightning-spinner>
                             </div>
                         </template>
+                        <!-- Invoice HTML View -->
+                        <template if:true={showInvoice}>
+                            <div class="slds-box slds-theme_shade slds-theme_alert-texture slds-m-bottom_medium">
+                                <div class="slds-text-align_center slds-m-bottom_medium">
+                                    <h2 class="slds-text-heading_medium slds-text-title_bold">Community General Hospital</h2>
+                                    <p class="slds-text-body_small">123 Health St, Wellness City, ST 90210</p>
+                                    <div class="slds-text-heading_small slds-m-top_small">INVOICE: {billData.name}</div>
+                                </div>
+                                
+                                <div class="slds-grid slds-wrap slds-gutters slds-p-bottom_small slds-border_bottom">
+                                    <div class="slds-col slds-size_1-of-2">
+                                        <p><strong>Date:</strong> {billData.date}</p>
+                                        <p><strong>Patient:</strong> {billData.patientName}</p>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-2 slds-text-align_right">
+                                        <p><strong>Doctor:</strong> {billData.doctorName}</p>
+                                    </div>
+                                </div>
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-top_medium">
+                                    <thead>
+                                        <tr class="slds-line-height_reset">
+                                            <th scope="col"><div class="slds-truncate">Item</div></th>
+                                            <th scope="col"><div class="slds-truncate">Price</div></th>
+                                            <th scope="col"><div class="slds-truncate">Qty</div></th>
+                                            <th scope="col"><div class="slds-truncate">Total</div></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={billData.items} for:item="item">
+                                            <tr key={item.id}>
+                                                <td><div class="slds-truncate">{item.medication}</div></td>
+                                                <td><div class="slds-truncate">{item.price}</div></td>
+                                                <td><div class="slds-truncate">{item.quantity}</div></td>
+                                                <td><div class="slds-truncate">{item.total}</div></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                                <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+                                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+                                        <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
+                                            <span>Subtotal:</span> <span>{billData.subTotal}</span>
+                                        </div>
+                                        <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
+                                            <span>Tax ({billData.taxPercentage}%):</span> <span>{billData.taxAmount}</span>
+                                        </div>
+                                        <div class="slds-grid slds-grid_align-spread slds-text-heading_small slds-p-top_small slds-border_top">
+                                            <strong>Total:</strong> <strong>{billData.totalAmount}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="slds-text-align_right slds-m-top_medium slds-border_top slds-p-top_small">
+                                    <lightning-button label="Email PDF" icon-name="utility:email" onclick={handleEmailPdf} variant="brand"></lightning-button>
+                                </div>
+                            </div>
+                        </template>
                         <template if:false={detailsLoading}>
                             <!-- Header Info -->
                             <div class="slds-grid slds-wrap slds-gutters slds-p-bottom_medium slds-border_bottom">
@@ -155,16 +211,16 @@
                                 </div>
                             </div>
                             <!-- Attachment Download -->
-                            <template if:true={selectedPrescription.contentVersionId}>
+                            <template if:true={selectedPrescription.id}>
                                 <div class="slds-p-vertical_medium slds-border_top slds-theme_shade slds-p-horizontal_small slds-m-top_small slds-rounded">
                                     <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
                                         <div>
-                                            <div class="slds-text-title_caps slds-text-color_weak">Billing Document</div>
-                                            <div class="slds-text-body_regular" title={selectedPrescription.contentTitle}>{selectedPrescription.contentTitle}</div>
+                                            <div class="slds-text-title_caps slds-text-color_weak">Invoice</div>
+                                            <div class="slds-text-body_regular">View Invoice</div>
                                         </div>
                                         <button class="slds-button slds-button_neutral" onclick={handlePreview}>
                                             <lightning-icon icon-name="utility:preview" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                                            Preview PDF
+                                            View Invoice
                                         </button>
                                     </div>
                                 </div>

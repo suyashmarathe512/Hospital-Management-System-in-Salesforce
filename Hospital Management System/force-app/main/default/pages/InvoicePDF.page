@@ -1,0 +1,91 @@
+<apex:page controller="InvoicePDFController" renderAs="pdf" applyBodyTag="false" standardStylesheets="false" showHeader="false" sidebar="false" action="{!loadData}">
+    <head>
+        <style type="text/css" media="print">
+            @page{@bottom-center{content:element(footer_content);}}
+            body{font-family:'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;font-size:12px;color:#333;}
+            .footer{position:running(footer_content);text-align:center;font-size:10px;color:#888;}
+            .header{text-align:center;margin-bottom:20px;}
+            .header h1{font-size:24px;font-weight:bold;margin:0;color:#0070d2;}
+            .header .address{font-size:11px;color:#555;}
+            .content-table{width:100%;border-collapse:collapse;margin-top:20px;}
+            .content-table th, .content-table td{border:1px solid #ddd;padding:8px;text-align:left;}
+            .content-table th{background-color:#f2f2f2;font-weight:bold;}
+            .info-section{margin-bottom:20px;padding:10px;border:1px solid #eee;background-color:#f9f9f9;}
+            .info-section h2{font-size:16px;font-weight:bold;margin-top:0;margin-bottom:10px;border-bottom:2px solid #0070d2;padding-bottom:5px;}            
+            .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}            
+            .info-item{padding-bottom:5px;}
+            .info-item .label{font-weight:bold;color:#555;}
+            .notes-section{margin-top:20px;padding:10px;background-color:#f9f9f9;border:1px solid #eee;}
+            .error{color:red;text-align:center;font-size:16px;padding:40px;}
+        </style>
+    </head>
+    <body>
+        <!-- Display errors if any -->
+        <apex:pageMessages />
+        <apex:outputPanel rendered="{!errorMessage != null}">
+            <div class="error">
+            {!errorMessage}
+            </div>
+        </apex:outputPanel>
+        <div class="footer">
+            Page <span class="page-number"/> of <span class="total-pages"/>
+            <br/>
+            General Hospital - (123) 456-7890 - contact@generalHospital.com
+        </div>
+        <!-- Render PDF content only if bill data is available -->
+        <apex:outputPanel rendered="{!bill != null}">
+            <div class="header">
+                <h1>General Hospital</h1>
+                <div class="address">Balewadi High Street, Pune, Maharashtra</div>
+                <hr/>
+            </div>
+            <div class="info-section">
+                <h2>Invoice Details</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Bill #:</span>{!bill.Name}
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Date Issued:</span>{!bill.BillingDate}
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Patient:</span>{!bill.PatientName}
+                    </div>
+                     <div class="info-item">
+                        <span class="label">Doctor:</span>{!bill.DoctorName}
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Prescription Ref:</span>{!bill.PrescriptionName}
+                    </div>
+                </div>
+            </div>
+            <h2>Bill Items</h2>
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>Medication</th>
+                        <th>Unit Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <apex:repeat value="{!bill.items}" var="item">
+                        <tr>
+                            <td>{!item.MedicationName}</td>
+                            <td>{!item.UnitPrice}</td>
+                            <td>{!item.Quantity}</td>
+                            <td>{!item.LineTotal}</td>
+                        </tr>
+                    </apex:repeat>
+                </tbody>
+            </table>
+            <div style="margin-top:20px; text-align:right;">
+                <p><strong>Sub Total:</strong>{!bill.SubTotal}</p>
+                <p><strong>Tax ({!bill.TaxPercentage}%):</strong>{!bill.SubTotal * (bill.TaxPercentage / 100)}</p>
+                <h3><strong>Total Amount:</strong>{!bill.TotalAmount}</h3>
+            </div>
+
+        </apex:outputPanel>
+    </body>
+</apex:page>

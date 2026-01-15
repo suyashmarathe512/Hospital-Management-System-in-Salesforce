@@ -4,7 +4,7 @@
  * @Description: Controller for the portal profile view,providing a summary of account data,
  *                  appointments,consultations,and prescriptions.
  *****************************************************************************************************/
-public with sharing class PortalProfileController{
+public without sharing class PortalProfileController{
     public class AccountSummary{
         @AuraEnabled public Account account;
     }
@@ -22,17 +22,15 @@ public with sharing class PortalProfileController{
         }
         AccountSummary result=new AccountSummary();
         // Account details
-        result.account=[SELECT
-                            Id,Name,PersonEmail,Phone,Website,Rating,Industry,
-                            BillingStreet,BillingCity,BillingState,BillingPostalCode,BillingCountry,
-                            ShippingStreet,ShippingCity,ShippingState,ShippingPostalCode,ShippingCountry
-                        FROM
-                            Account
-                        WHERE
-                            Id=:accountId
-                        WITH
-                            SECURITY_ENFORCED
-                        LIMIT 1];
+       result.account = [SELECT
+                                Id,Name,FirstName,LastName,PersonEmail,PersonBirthdate,PersonMobilePhone,Phone,PersonOtherPhone,PersonMailingStreet,PersonMailingCity,PersonMailingState,PersonMailingPostalCode,PersonMailingCountry,PersonOtherStreet,PersonOtherCity,PersonOtherState,PersonOtherPostalCode,PersonOtherCountry
+                            FROM 
+                                Account
+                            WHERE 
+                                Id = :accountId
+                            AND 
+                                IsPersonAccount = true
+                            LIMIT 1];
         return result;
     }
 /*****************************************************************************************************
@@ -70,7 +68,7 @@ public with sharing class PortalProfileController{
             
             update accToUpdate;
         }catch(Exception e){
-            throw new AuraHandledException('Error updating profile: ' + e.getMessage());
+            throw new AuraHandledException('Error updating profile: '+e.getMessage());
         }
     }
 }

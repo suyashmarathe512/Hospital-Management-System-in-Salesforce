@@ -3,7 +3,7 @@
  * @ClassName: PortalAuthService
  * @Description: This class provides authentication and account creation services for the patient portal.
  *****************************************************************************************************/
-public with sharing class PortalAuthService{
+public without sharing class PortalAuthService{
 /*********************************************************************************************************
  * @Author:    CRM Team Innovation
  * @ClassName: AuthResult
@@ -28,15 +28,12 @@ public with sharing class PortalAuthService{
             throw new AuraHandledException('Invalid email or password');
     }
         // Query Person Account by exact match
-        // Run SOQL using Database.query with USER_MODE to respect guest access
-        List<Account> matches=(List<Account>)Database.queryWithBinds(
+        List<Account> matches=Database.query(
             'SELECT Id FROM Account '+
-            'WHERE RecordType.DeveloperName=:paDevName '+
+            'WHERE IsPersonAccount=true '+
             'AND PersonEmail=:email '+
             'AND Login_Password__c=:password '+
-            'LIMIT 1',
-            new Map<String,Object>{'paDevName'=>'PersonAccount','email'=>email,'password'=>password},
-            AccessLevel.SYSTEM_MODE
+            'LIMIT 1'
         );
         if(matches.isEmpty()){
             throw new AuraHandledException('Invalid email or password');
@@ -78,9 +75,9 @@ public with sharing class PortalAuthService{
     public static String createPersonAccount(CreateRequest req){
         // DML below must be in USER_MODE to honor guest profile permissions
         // Minimal validation
-        System.debug('createPersonAccount req: '+ JSON.serialize(req));
+        System.debug('createPersonAccount req: '+JSON.serialize(req));
         if(req==null||String.isBlank(req.email)||String.isBlank(req.password)){
-            System.debug('Validation failed. Req: '+ req);
+            System.debug('Validation failed. Req: '+req);
             throw new AuraHandledException('Validation failed: Email and Password are required.');
     }
         String lastName=req.lastName;
@@ -132,10 +129,10 @@ public with sharing class PortalAuthService{
                     throw new AuraHandledException('An account with this email address already exists.');
             }
         }
-            throw new AuraHandledException('Error: '+ e.getMessage());
+            throw new AuraHandledException('Error: '+e.getMessage());
     }catch(Exception e){
-            System.debug('Insert failed: '+ e.getMessage());
-            throw new AuraHandledException('Error: '+ e.getMessage());
+            System.debug('Insert failed: '+e.getMessage());
+            throw new AuraHandledException('Error: '+e.getMessage());
     }
         return 'Account created successfully. Please log in with your email and password.';
 }
