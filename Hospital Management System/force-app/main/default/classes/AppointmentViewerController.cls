@@ -42,6 +42,29 @@ public with sharing class AppointmentViewerController{
         Date dateToCheck=String.isNotBlank(visitDate)?Date.valueOf(visitDate):Date.today();
         return calculateFeeLogic(baseFee,history,dateToCheck);
     }
+    @AuraEnabled(cacheable=true)
+    public static List<Consultation__c> getConsultationHistory(String patientId){
+        return [SELECT 
+                    Id,Name,Date_of_Visit__c,Doctor__c,Doctor__r.Name,
+                    Visit_Charges__c
+                FROM
+                    Consultation__c
+                WHERE
+                    Patient__c=:patientId
+                ORDER BY
+                    Date_of_Visit__c DESC];
+    }
+    @AuraEnabled(cacheable=true)
+    public static List<Prescription__c> getPatientPrescriptions(String patientId){
+        return [SELECT 
+                    Id,Name,CreatedDate,Consultation__r.Doctor__r.Name,Notes__c
+                FROM
+                    Prescription__c
+                WHERE
+                    Account__c=:patientId
+                ORDER BY
+                    CreatedDate DESC];
+    }
 /*****************************************************************************************************************************
  * @Author:     CRM Team Innovation
  * @MethodName: saveConsultation

@@ -4,6 +4,8 @@ import{ShowToastEvent}from 'lightning/platformShowToastEvent';
 import getAppointmentDetails from '@salesforce/apex/AppointmentViewerController.getAppointmentDetails';
 import saveConsultation from '@salesforce/apex/AppointmentViewerController.saveConsultation';
 import getConsultationFee from '@salesforce/apex/AppointmentViewerController.getConsultationFee';
+import getConsultationHistory from '@salesforce/apex/AppointmentViewerController.getConsultationHistory';
+import getPatientPrescriptions from '@salesforce/apex/AppointmentViewerController.getPatientPrescriptions';
 export default class AppoinmentViewer extends LightningElement{
     @track recordId;
     @track isModalOpen=false;
@@ -14,6 +16,9 @@ export default class AppoinmentViewer extends LightningElement{
     @track numberOfVisits='';
     @track visitCharges='';
     @track isSaving=false;
+    @track consultationHistory=[];
+    @track upcomingAppointments=[];
+    @track prescriptionHistory=[];
     @wire(CurrentPageReference)
     getStateParameters(currentPageReference){
         if(currentPageReference&&currentPageReference.state){
@@ -41,6 +46,52 @@ export default class AppoinmentViewer extends LightningElement{
         const day = String(today.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
+    @wire(getConsultationHistory, { patientId: '$patientId' })
+    wiredHistory({ error, data }) {
+        if (data) {
+            this.consultationHistory = data.map(record => ({
+                ...record,
+                DoctorName: record.Doctor__r ? record.Doctor__r.Name : '',
+                consultationUrl: '/' + record.Id
+            }));
+        } else if (error) {
+            console.error('Error loading history', error);
+            this.consultationHistory = [];
+        }
+    }
+    @wire(getPatientPrescriptions, { patientId: '$patientId' })
+    wiredPrescriptions({ error, data }) {
+        if (data) {
+            this.prescriptionHistory = data.map(record => ({
+                ...record,
+                DoctorName: record.Consultation__r && record.Consultation__r.Doctor__r ? record.Consultation__r.Doctor__r.Name : '',
+                prescriptionUrl: '/' + record.Id
+            }));
+        } else if (error) {
+            console.error('Error loading prescriptions', error);
+            this.prescriptionHistory = [];
+        }
+    }
+    get historyColumns() {
+        return [
+            { label: 'Consultation #', fieldName: 'consultationUrl', type: 'url', typeAttributes: { label: { fieldName: 'Name' }, target: '_blank' } },
+            { label: 'Date', fieldName: 'Date_of_Visit__c', type: 'date' },
+            { label: 'Doctor', fieldName: 'DoctorName', type: 'text' },
+            { label: 'Charges', fieldName: 'Visit_Charges__c', type: 'currency' },
+            { label: 'Next Visit', fieldName: 'Next_Visit__c', type: 'date' }
+        ];
+    }
+    get prescriptionColumns() {
+        return [
+            { label: 'Prescription #', fieldName: 'prescriptionUrl', type: 'url', typeAttributes: { label: { fieldName: 'Name' }, target: '_blank' } },
+            { label: 'Date', fieldName: 'CreatedDate', type: 'date' },
+            { label: 'Doctor', fieldName: 'DoctorName', type: 'text' },
+            { label: 'Notes', fieldName: 'Notes__c', type: 'text' }
+        ];
+    }
+    get hasHistory() { return this.consultationHistory && this.consultationHistory.length > 0; }
+    get hasUpcoming() { return this.upcomingAppointments && this.upcomingAppointments.length > 0; }
+    get hasPrescriptions() { return this.prescriptionHistory && this.prescriptionHistory.length > 0; }
     openModal(){
         this.isModalOpen=true;
     }

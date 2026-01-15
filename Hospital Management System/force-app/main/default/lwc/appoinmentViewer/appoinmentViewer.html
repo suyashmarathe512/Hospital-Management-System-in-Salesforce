@@ -36,6 +36,40 @@
                         <div class="slds-col slds-size_1-of-1 slds-p-bottom_medium">
                             <lightning-textarea label="Reason for Visit" value={appointmentData.Reason_for_Visit__c} readonly></lightning-textarea>
                         </div>
+                        <div class="slds-col slds-size_1-of-1 slds-p-top_medium slds-border_top">
+                            <lightning-tabset variant="scoped">
+                                <lightning-tab label="Consultation History" icon-name="standard:case">
+                                    <template if:true={hasHistory}>
+                                        <div style="height: 200px;">
+                                            <lightning-datatable
+                                                key-field="Id"
+                                                data={consultationHistory}
+                                                columns={historyColumns}
+                                                hide-checkbox-column>
+                                            </lightning-datatable>
+                                        </div>
+                                    </template>
+                                    <template if:false={hasHistory}>
+                                        <p class="slds-text-color_weak slds-p-around_medium">No previous consultations found for this patient.</p>
+                                    </template>
+                                </lightning-tab>
+                                <lightning-tab label="Prescriptions" icon-name="standard:prescription">
+                                    <template if:true={hasPrescriptions}>
+                                        <div style="height: 200px;">
+                                            <lightning-datatable
+                                                key-field="Id"
+                                                data={prescriptionHistory}
+                                                columns={prescriptionColumns}
+                                                hide-checkbox-column>
+                                            </lightning-datatable>
+                                        </div>
+                                    </template>
+                                    <template if:false={hasPrescriptions}>
+                                        <p class="slds-text-color_weak slds-p-around_medium">No prescriptions found for this patient.</p>
+                                    </template>
+                                </lightning-tab>
+                            </lightning-tabset>
+                        </div>
                     </div>
                 </template>
                 <template if:true={appointment.error}>
