@@ -33,24 +33,36 @@ global with sharing class PrescriptionService{
                 CreatedDate DESC
         ];
         // Fetch Attachments (ContentDocuments) for these prescriptions
-        Set<Id> pIds=new Set<Id>();
+        Set<Id> entityIds=new Set<Id>();
+        if(String.isNotBlank(patientId)){
+            entityIds.add(patientId);
+        }
         for(Prescription__c p:prescriptions){
-            pIds.add(p.Id);
+            entityIds.add(p.Id);
         }
-        Map<Id,Map<String,Object>> attachmentMap=new Map<Id,Map<String,Object>>();
-        for(ContentDocumentLink link:[SELECT
-                                            LinkedEntityId,ContentDocument.Title,ContentDocument.FileExtension,
-                                            ContentDocument.LatestPublishedVersion.VersionData
-                                        FROM
-                                            ContentDocumentLink
-                                        WHERE
-                                            LinkedEntityId IN :pIds]){
-            attachmentMap.put(link.LinkedEntityId,new Map<String,Object>{
-                'fileName' => link.ContentDocument.Title + '.' + link.ContentDocument.FileExtension,
-                'body' => EncodingUtil.base64Encode(link.ContentDocument.LatestPublishedVersion.VersionData)
-            });
+        Map<Id,List<Map<String,Object>>> attachmentMap=new Map<Id,List<Map<String,Object>>>();
+        if(!entityIds.isEmpty()){
+            for(ContentDocumentLink link:[SELECT
+                                                LinkedEntityId,ContentDocument.Title,ContentDocument.FileExtension,
+                                                ContentDocument.LatestPublishedVersion.VersionData
+                                            FROM
+                                                ContentDocumentLink
+                                            WHERE
+                                                LinkedEntityId
+                                            IN
+                                                :entityIds]){
+                if(!attachmentMap.containsKey(link.LinkedEntityId)){
+                    attachmentMap.put(link.LinkedEntityId,new List<Map<String,Object>>());
+                }
+                attachmentMap.get(link.LinkedEntityId).add(new Map<String,Object>{
+                    'fileName'=>link.ContentDocument.Title + '.' + link.ContentDocument.FileExtension,
+                    'body'=>EncodingUtil.base64Encode(link.ContentDocument.LatestPublishedVersion.VersionData)
+                });
+            }
         }
-        List<Map<String,Object>> results=new List<Map<String,Object>>();
+        Map<String,Object> responseMap=new Map<String,Object>();
+        // 1. Process Prescriptions
+        List<Map<String,Object>> prescriptionList=new List<Map<String,Object>>();
         for (Prescription__c p:prescriptions){
             Map<String,Object> res=new Map<String,Object>();
             res.put('Id',p.Id);
@@ -58,7 +70,7 @@ global with sharing class PrescriptionService{
             res.put('Prescription_Date__c',p.CreatedDate.date());
             res.put('DoctorName',(p.Consultation__r!=null && p.Consultation__r.Doctor__r!=null)?p.Consultation__r.Doctor__r.Name:'');
             res.put('Notes',p.Notes__c);   
-            if(attachmentMap.containsKey(p.Id)) res.put('Attachment',attachmentMap.get(p.Id));
+            if(attachmentMap.containsKey(p.Id)) res.put('Attachments',attachmentMap.get(p.Id));
             List<Map<String,Object>> meds=new List<Map<String,Object>>();
             for (Medication__c item:p.Medications__r){
                 Map<String,Object> m=new Map<String,Object>();
@@ -69,9 +81,14 @@ global with sharing class PrescriptionService{
                 meds.add(m);
             }
             res.put('Medications',meds);
-            results.add(res);
+            prescriptionList.add(res);
         }
-        response.responseBody=Blob.valueOf(JSON.serialize(results));
+        responseMap.put('Prescriptions',prescriptionList);
+        // 2. Process Account Files
+        if(String.isNotBlank(patientId) && attachmentMap.containsKey(patientId)){
+            responseMap.put('AccountFiles',attachmentMap.get(patientId));
+        }
+        response.responseBody=Blob.valueOf(JSON.serialize(responseMap));
         response.addHeader('Content-Type','application/json');
     }
 }

@@ -1,0 +1,200 @@
+<template>
+    <lightning-quick-action-panel header="Generate Bill">
+        <!-- Loading Spinner -->
+        <div if:true={isLoading} class="slds-is-relative slds-p-around_large">
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+        </div>
+        
+        <div if:false={isLoading} class="slds-grid slds-wrap slds-gutters">
+            <!-- Header Info Section -->
+            <div class="slds-col slds-size_1-of-1 slds-m-bottom_medium">
+                <div class="slds-box slds-theme_shade slds-theme_alert-texture">
+                    <div class="slds-grid slds-gutters slds-grid_vertical-align-center">
+                        <div class="slds-col slds-size_1-of-2">
+                            <div class="slds-text-heading_small slds-m-bottom_xx-small">
+                                <lightning-icon icon-name="standard:user" size="small" class="slds-m-right_x-small"></lightning-icon>
+                                <strong>Patient:</strong> {patientName}
+                            </div>
+                            <div class="slds-text-body_regular slds-m-left_large">
+                                <strong>Doctor:</strong> {doctorName}
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2 slds-text-align_right">
+                            <lightning-input 
+                                type="date" 
+                                label="Billing Date" 
+                                value={billDate} 
+                                onchange={handleDateChange}
+                                class="slds-float_right"
+                                style="max-width: 200px;">
+                            </lightning-input>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Line Items Table -->
+            <div class="slds-col slds-size_1-of-1">
+                <div class="slds-text-heading_small slds-m-bottom_x-small">Bill Line Items</div>
+                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                    <thead>
+                        <tr class="slds-line-height_reset">
+                            <th class="" scope="col"><div class="slds-truncate" title="Item Name">Item Name</div></th>
+                            <th class="" scope="col" style="width: 100px;"><div class="slds-truncate" title="Qty">Qty</div></th>
+                            <th class="" scope="col" style="width: 150px;"><div class="slds-truncate" title="Unit Price">Unit Price</div></th>
+                            <th class="" scope="col" style="width: 150px;"><div class="slds-truncate" title="Total">Total</div></th>
+                            <th class="" scope="col" style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={billItems} for:item="item" for:index="index">
+                            <tr key={item.id}>
+                                <td style="overflow: visible;">
+                                    <lightning-record-edit-form object-api-name="Bill_line__c" density="compact">
+                                        <lightning-input-field 
+                                            field-name="Medication__c" 
+                                            value={item.medicationId} 
+                                            variant="label-hidden"
+                                            onchange={handleItemChange}
+                                            data-index={index}
+                                            data-field="medicationId">
+                                        </lightning-input-field>
+                                    </lightning-record-edit-form>
+                                </td>
+                                <td>
+                                    <lightning-input 
+                                        type="number" 
+                                        variant="label-hidden" 
+                                        value={item.quantity} 
+                                        data-index={index} 
+                                        data-field="quantity" 
+                                        onchange={handleItemChange} 
+                                        min="1">
+                                    </lightning-input>
+                                </td>
+                                <td>
+                                    <lightning-input 
+                                        type="number" 
+                                        formatter="currency" 
+                                        step="0.01" 
+                                        variant="label-hidden" 
+                                        value={item.price} 
+                                        data-index={index} 
+                                        data-field="price" 
+                                        onchange={handleItemChange}
+                                        placeholder="$0.00">
+                                    </lightning-input>
+                                </td>
+                                <td>
+                                    <div class="slds-truncate slds-p-top_x-small">
+                                        <lightning-formatted-number value={item.total} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                    </div>
+                                </td>
+                                <td>
+                                    <lightning-button-icon 
+                                        icon-name="utility:delete" 
+                                        variant="bare" 
+                                        alternative-text="Remove" 
+                                        title="Remove" 
+                                        class="slds-text-color_error"
+                                        data-index={index} 
+                                        onclick={handleRemoveItem}>
+                                    </lightning-button-icon>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="slds-m-top_small">
+                    <lightning-button label="Add Medication" icon-name="utility:add" onclick={handleAddItem}></lightning-button>
+                    <lightning-button label="Create New Medication" icon-name="utility:new" onclick={handleOpenMedicationModal} class="slds-m-left_small"></lightning-button>
+                </div>
+            </div>
+
+            <!-- Summary / Totals Section -->
+            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                <div class="slds-grid slds-grid_align-end">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                        <div class="slds-box slds-box_x-small slds-theme_default slds-color__background_gray-1">
+                            <div class="slds-grid slds-grid_vertical slds-text-align_right">
+                                <div class="slds-col slds-p-bottom_xx-small">
+                                    <span class="slds-m-right_small slds-text-color_weak">Subtotal:</span>
+                                    <strong><lightning-formatted-number value={subTotal} format-style="currency" currency-code="USD"></lightning-formatted-number></strong>
+                                </div>
+                                <div class="slds-col slds-p-bottom_xx-small slds-grid slds-grid_align-end slds-grid_vertical-align-center">
+                                    <span class="slds-m-right_small slds-text-color_weak">Tax (%):</span>
+                                    <div style="width: 80px; display:inline-block;">
+                                        <lightning-input 
+                                            type="number" 
+                                            variant="label-hidden" 
+                                            value={taxPercentage} 
+                                            onchange={handleTaxChange} 
+                                            min="0" 
+                                            step="0.1">
+                                        </lightning-input>
+                                    </div>
+                                </div>
+                                <div class="slds-col slds-p-bottom_xx-small">
+                                    <span class="slds-m-right_small slds-text-color_weak">Tax Amount:</span>
+                                    <lightning-formatted-number value={taxAmount} format-style="currency" currency-code="USD"></lightning-formatted-number>
+                                </div>
+                                <div class="slds-col slds-border_top slds-p-top_small slds-m-top_xx-small">
+                                    <span class="slds-text-heading_small slds-m-right_small">Total:</span>
+                                    <span class="slds-text-heading_small slds-text-color_success"><strong><lightning-formatted-number value={grandTotal} format-style="currency" currency-code="USD"></lightning-formatted-number></strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div slot="footer">
+            <lightning-button variant="neutral" label="Cancel" onclick={handleCancel}></lightning-button>
+            <lightning-button variant="brand" label="Save Bill" class="slds-m-left_small" onclick={handleSave} disabled={isLoading}></lightning-button>
+        </div>
+    </lightning-quick-action-panel>
+    <!-- New Medication Modal -->
+    <template if:true={showMedicationModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium" aria-modal="true">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseMedicationModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse" size="small"></lightning-icon>
+                        <span class="slds-assistive-text">Close</span>
+                    </button>
+                    <h2 class="slds-text-heading_medium slds-hyphenate">Create New Medication</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-record-edit-form object-api-name="Medication__c" onsuccess={handleMedicationSuccess}>
+                        <lightning-messages></lightning-messages>
+                        <div class="slds-grid slds-wrap slds-gutters">
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input-field field-name="Name" required placeholder="e.g. Paracetamol"></lightning-input-field>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input-field field-name="Prescription__c" value={recordId} disabled></lightning-input-field>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input-field field-name="Dosage__c" placeholder="e.g. 500mg"></lightning-input-field>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input-field field-name="Duration_Days__c" placeholder="e.g. 5 Days" ></lightning-input-field>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-input-field field-name="Frequency__c" placeholder="e.g. 1-0-1"></lightning-input-field>
+                            </div>
+                        </div>
+                        
+                        <div class="slds-m-top_medium slds-text-align_right">
+                            <lightning-button class="slds-m-right_small" variant="neutral" label="Cancel" onclick={handleCloseMedicationModal}></lightning-button>
+                            <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
+                        </div>
+                    </lightning-record-edit-form>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>
