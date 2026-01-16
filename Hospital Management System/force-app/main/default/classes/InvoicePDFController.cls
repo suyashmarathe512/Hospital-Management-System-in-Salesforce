@@ -2,6 +2,17 @@ public without sharing class InvoicePDFController{
     public BillWrapper bill{get;set;}
     public String errorMessage{get;set;}
     public void loadData(){ 
+        String billDataParam = ApexPages.currentPage().getParameters().get('billData');
+        if(String.isNotBlank(billDataParam)){
+            try{
+                Map<String,Object> result=(Map<String,Object>)JSON.deserializeUntyped(billDataParam);
+                bill=new BillWrapper(result);
+                return;
+            }catch(Exception e){
+                errorMessage='Error processing provided data: '+e.getMessage();
+                return;
+            }
+        }
         String prescriptionId=ApexPages.currentPage().getParameters().get('id');
         if(String.isBlank(prescriptionId)){
             errorMessage='No Prescription ID provided.';    

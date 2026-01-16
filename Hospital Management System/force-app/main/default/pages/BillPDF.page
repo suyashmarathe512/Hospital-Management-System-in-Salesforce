@@ -65,8 +65,5 @@
                 <tr><td><h3>Total Amount:</h3></td><td><h3>{!Bill__c.Total_Amount__c}</h3></td></tr>
             </table>
         </div>
-        <div class="footer">
-            <p>Thank you for your visit.</p>
-        </div>
     </body>
 </apex:page>

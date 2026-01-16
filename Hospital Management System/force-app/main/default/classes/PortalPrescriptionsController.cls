@@ -1,15 +1,15 @@
 /*********************************************************************************************************
- * @Author:      CRM Team Innovation
- * @ClassName:  PortalPrescriptionsController
- * @Description: Controller for managing prescription data in the patient portal,
+ * @Author:     CRM Team Innovation
+ * @ClassName: PortalPrescriptionsController
+ * @Description:Controller for managing prescription data in the patient portal,
  *                  providing summaries and detailed views of prescriptions.
  *****************************************************************************************************/
 public without sharing class PortalPrescriptionsController{
     /*****************************************************************************************************
-     * @Author:       CRM Team Innovation
-     * @MethodName:   getPrescriptionSummaries
-     * @Param:        Id accountId
-     * Description:  Retrieves a list of prescription summaries for a given account.
+     * @Author:      CRM Team Innovation
+     * @MethodName:  getPrescriptionSummaries
+     * @Param:       Id accountId
+     * Description: Retrieves a list of prescription summaries for a given account.
      ******************************************************************************************************/
     @AuraEnabled(cacheable=true)
     public static List<PrescriptionSummaryDto> getPrescriptionSummaries(Id accountId){
@@ -34,23 +34,23 @@ public without sharing class PortalPrescriptionsController{
                 dto.createdDate=p.CreatedDate;
                 // Create a short preview of notes
                 dto.shortNotes=(p.Notes__c!=null&&p.Notes__c.length() > 60) 
-                    ? p.Notes__c.substring(0,60)+'...' 
-                :p.Notes__c;
+                ?p.Notes__c.substring(0,60)+'...' 
+            :p.Notes__c;
                 dto.hasBilling=(p.ContentDocumentLinks!=null&&!p.ContentDocumentLinks.isEmpty());
                 // Logic for "Active" status(e.g.,created in last 30 days)
                 dto.isActive=(p.CreatedDate >= System.now().addDays(-30));
                 summaries.add(dto);
             }
         }catch(Exception e){
-            throw new AuraHandledException('Unable to fetch prescriptions: '+e.getMessage());
+            throw new AuraHandledException('Unable to fetch prescriptions:'+e.getMessage());
         }
         return summaries;
     }
     /*****************************************************************************************************
-     * @Author:       CRM Team Innovation
-     * @MethodName:   getPrescriptionDetails
-     * @Param:        Id prescriptionId
-     * Description:  Retrieves detailed information for a specific prescription,
+     * @Author:      CRM Team Innovation
+     * @MethodName:  getPrescriptionDetails
+     * @Param:       Id prescriptionId
+     * Description: Retrieves detailed information for a specific prescription,
      *                including associated medications and billing documents.
      * ******************************************************************************************************/
     @AuraEnabled
@@ -90,14 +90,14 @@ public without sharing class PortalPrescriptionsController{
                 detail.contentVersionId=cdl.ContentDocument.LatestPublishedVersionId;
             }
         }catch(Exception e){
-            throw new AuraHandledException('Unable to fetch prescription details: '+e.getMessage());
+            throw new AuraHandledException('Unable to fetch prescription details:'+e.getMessage());
         }
         return detail;
     }
     /*****************************************************************************************************
-     *@Author:       CRM Team Innovation
-     *@ClassName:   PrescriptionSummaryDto
-      *@Description: Data Transfer Object for Prescription Summary
+     *@Author:      CRM Team Innovation
+     *@ClassName:  PrescriptionSummaryDto
+      *@Description:Data Transfer Object for Prescription Summary
      ******************************************************************************************************/
     public class PrescriptionSummaryDto{
         @AuraEnabled public String id;
@@ -109,9 +109,9 @@ public without sharing class PortalPrescriptionsController{
         @AuraEnabled public Boolean isActive;
     }
     /*****************************************************************************************************
-     *@Author:       CRM Team Innovation
-     *@ClassName:   PrescriptionDetailDto
-      *@Description: Data Transfer Object for Prescription Details
+     *@Author:      CRM Team Innovation
+     *@ClassName:  PrescriptionDetailDto
+      *@Description:Data Transfer Object for Prescription Details
      ******************************************************************************************************/
     public class PrescriptionDetailDto{
         @AuraEnabled public String id;
@@ -125,9 +125,9 @@ public without sharing class PortalPrescriptionsController{
         @AuraEnabled public String contentVersionId;
     }
     /*****************************************************************************************************
-    *@Author:       CRM Team Innovation
-    *@ClassName:   MedicationDto
-    *@Description: Data Transfer Object for Medication Details
+    *@Author:      CRM Team Innovation
+    *@ClassName:  MedicationDto
+    *@Description:Data Transfer Object for Medication Details
     ******************************************************************************************************/
     public class MedicationDto{
         @AuraEnabled public String name;
@@ -136,10 +136,10 @@ public without sharing class PortalPrescriptionsController{
         @AuraEnabled public Decimal durationdays;
     }
     /*****************************************************************************************************
-     * @Author:       CRM Team Innovation
-     * @MethodName:   getBillDetails
-     * @Param:        Id prescriptionId
-     * Description:   Fetches Bill details from external org via REST callout.
+     * @Author:      CRM Team Innovation
+     * @MethodName:  getBillDetails
+     * @Param:       Id prescriptionId
+     * Description:  Fetches Bill details from external org via REST callout.
      ******************************************************************************************************/
     @AuraEnabled
     public static Map<String,Object> getBillDetails(Id prescriptionId){
@@ -165,54 +165,126 @@ public without sharing class PortalPrescriptionsController{
             req.setMethod('GET');
             Http http=new Http();
             HttpResponse res=http.send(req);
-            if(res.getStatusCode() == 200){
+            if(res.getStatusCode()==200){
                 return(Map<String,Object>) JSON.deserializeUntyped(res.getBody());
             }else{
-                throw new AuraHandledException('Failed to retrieve Bill data: '+res.getStatus());
+                throw new AuraHandledException('Failed to retrieve Bill data:'+res.getStatus());
             }
         }catch(Exception e){
-            throw new AuraHandledException('Error: '+e.getMessage());
+            throw new AuraHandledException('Error:'+e.getMessage());
         }
     }
     /*****************************************************************************************************
-     * @Author:       CRM Team Innovation
-     * @MethodName:   emailInvoicePdf
-     * @Param:        Id prescriptionId
-     * Description:   Generates PDF and emails it to the patient.
+     * @Author:      CRM Team Innovation
+     * @MethodName:  emailInvoicePdf
+     * @Param:       Id prescriptionId
+     * Description:  Generates PDF and emails it to the patient.
      ******************************************************************************************************/
     @AuraEnabled
     public static void emailInvoicePdf(Id prescriptionId){
         try{
-            // Retrieve the External ID(Server Org's Prescription ID)
+            if(String.isBlank(prescriptionId)){
+                throw new AuraHandledException('Invalid Prescription ID.');
+            }
             Prescription__c pres=[SELECT
-                                        Prescription_External_ID__c
+                                        Name,Account__r.PersonEmail,Account__r.Name
                                     FROM
                                         Prescription__c
                                     WHERE
-                                        Id=:prescriptionId
-                                    LIMIT 1];
-            if(String.isBlank(pres.Prescription_External_ID__c)){
-                throw new AuraHandledException('External ID not found for this prescription.');
+                                        Id=:prescriptionId LIMIT 1];
+            if(pres.Account__r==null||String.isBlank(pres.Account__r.PersonEmail)){
+                throw new AuraHandledException('No email address found for this patient.');
             }
-            // Call the REST endpoint asynchronously to avoid "Callout loop not allowed"
-            sendEmailAsync(pres.Prescription_External_ID__c);
+            Id oweaId;
+            List<OrgWideEmailAddress> oweas = [SELECT
+                                                    Id
+                                                FROM
+                                                    OrgWideEmailAddress LIMIT 1];
+            if(!oweas.isEmpty()){
+                oweaId = oweas[0].Id;
+            }
+            if(oweaId == null){
+                System.debug(LoggingLevel.ERROR, 'CRITICAL: No Org-Wide Email Address found. Guest Users cannot send emails without one. Please check Setup > Org-Wide Email Addresses and Profile Eligibility.');
+            }
+            System.enqueueJob(new EmailPdfQueueable(prescriptionId,pres.Account__r.PersonEmail,pres.Name,pres.Account__r.Name, oweaId));
         }catch(Exception e){
-            throw new AuraHandledException('Error sending email: '+e.getMessage());
+            throw new AuraHandledException('Error initiating email:'+e.getMessage());
         }
     }
-    @future(callout=true)
-    private static void sendEmailAsync(String externalId){
-        HttpRequest req=new HttpRequest();
-        req.setEndpoint('callout:Hospital_Server/services/apexrest/BillEmail/');
-        req.setMethod('POST');
-        req.setHeader('Content-Type','application/json');
-        Map<String,Object> payload=new Map<String,Object>();
-        payload.put('prescriptionIds',new List<String>{externalId});
-        req.setBody(JSON.serialize(payload));
-        Http http=new Http();
-        HttpResponse res=http.send(req);
-        if(res.getStatusCode()!=200){
-            System.debug(LoggingLevel.ERROR, 'Failed to send email: '+res.getBody());
+    public without sharing class EmailPdfQueueable implements Queueable,Database.AllowsCallouts {
+        private Id prescriptionId;
+        private String emailAddress;
+        private String prescriptionName;
+        private String patientName;
+        private Id oweaId;
+        public EmailPdfQueueable(Id prescriptionId,String emailAddress,String prescriptionName,String patientName, Id oweaId){
+            this.prescriptionId=prescriptionId;
+            this.emailAddress=emailAddress;
+            this.prescriptionName=prescriptionName;
+            this.patientName=patientName;
+            this.oweaId=oweaId;
+        }
+        public void execute(QueueableContext context){
+            try {
+                List<ContentDocumentLink> docs = [SELECT
+                                                    ContentDocument.LatestPublishedVersion.VersionData, ContentDocument.Title, ContentDocument.FileExtension 
+                                                FROM
+                                                    ContentDocumentLink 
+                                                WHERE
+                                                    LinkedEntityId = :prescriptionId 
+                                                ORDER BY
+                                                    ContentDocument.CreatedDate DESC LIMIT 1];
+                
+                if(docs.isEmpty()){
+                    System.debug('No Invoice PDF found for Prescription: ' + prescriptionId);
+                    return;
+                }
+                Blob pdfBlob = docs[0].ContentDocument.LatestPublishedVersion.VersionData;
+                String fileName = docs[0].ContentDocument.Title;
+                if(String.isNotBlank(docs[0].ContentDocument.FileExtension) && !fileName.endsWithIgnoreCase(docs[0].ContentDocument.FileExtension)){
+                    fileName += '.' + docs[0].ContentDocument.FileExtension;
+                }
+                Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
+                mail.setToAddresses(new List<String>{emailAddress});
+                // Professional Subject
+                mail.setSubject('Invoice for Prescription '+prescriptionName+' - General Hospital');
+                // Rich HTML Body
+                String htmlBody='<div style="font-family:Helvetica,Arial,sans-serif; font-size:14px; color:#333; line-height:1.5;">'+
+                    '<div style="background-color:#f4f6f9; padding:20px; text-align:center; border-bottom:4px solid #0070d2;">'+
+                    '<h1 style="margin:0; color:#0070d2; font-size:24px;">General Hospital</h1>'+
+                    '</div>'+
+                    '<div style="padding:30px; background-color:#ffffff;">'+
+                    '<p>Dear '+(String.isBlank(patientName)?'Patient':patientName)+',</p>'+
+                    '<p>We hope this email finds you well.</p>'+
+                    '<p>Please find attached the invoice for your recent prescription <strong>'+prescriptionName+'</strong>.</p>'+
+                    '<p>If you have any questions regarding this invoice,please do not hesitate to contact our billing department.</p>'+
+                    '<br/>'+
+                    '<p>Sincerely,</p>'+
+                    '<p><strong>General Hospital Team</strong><br/>'+
+                    '<span style="color:#888; font-size:12px;">Balewadi High Street,Pune,Maharashtra</span></p>'+
+                    '</div>'+
+                    '<div style="background-color:#f4f6f9; padding:10px; text-align:center; color:#888; font-size:11px;">'+
+                    '&copy; '+System.today().year()+' General Hospital. All rights reserved.'+
+                    '</div>'+
+                    '</div>';
+                
+                mail.setHtmlBody(htmlBody);
+                mail.setPlainTextBody('Dear '+(String.isBlank(patientName)?'Patient':patientName)+',\n\nPlease find attached the invoice for your recent prescription '+prescriptionName+'.\n\nSincerely,\nGeneral Hospital Team');
+                Messaging.EmailFileAttachment attach=new Messaging.EmailFileAttachment();
+                attach.setFileName(fileName);
+                attach.setBody(pdfBlob);
+                attach.setContentType('application/pdf');
+                mail.setFileAttachments(new List<Messaging.EmailFileAttachment>{attach});
+                if(oweaId != null){
+                    mail.setOrgWideEmailAddressId(oweaId);
+                } else {
+                    mail.setSenderDisplayName('General Hospital');
+                }
+                
+                Messaging.sendEmail(new List<Messaging.SingleEmailMessage>{mail});
+            }catch(Exception e) {
+                System.debug('Error in EmailPdfQueueable:'+e.getMessage());
+            }
         }
     }
 }

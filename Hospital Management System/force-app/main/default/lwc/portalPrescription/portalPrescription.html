@@ -95,6 +95,15 @@
                         <h2 class="slds-text-heading_medium slds-hyphenate">Prescription Details</h2>
                     </header>
                     <div class="slds-modal__content slds-p-around_medium">
+                        <template if:true={showModalMessage}>
+                            <div class={modalMessageClass} role="alert">
+                                <span class="slds-assistive-text">{modalMessageType}</span>
+                                <span class="slds-icon_container slds-m-right_x-small">
+                                    <lightning-icon icon-name={modalMessageIcon} variant="inverse" size="x-small"></lightning-icon>
+                                </span>
+                                <h2>{modalMessage}</h2>
+                            </div>
+                        </template>
                         <template if:true={detailsLoading}>
                             <div class="slds-p-around_large slds-is-relative" style="min-height: 200px;">
                                 <lightning-spinner alternative-text="Loading Details" size="medium"></lightning-spinner>
@@ -102,57 +111,92 @@
                         </template>
                         <!-- Invoice HTML View -->
                         <template if:true={showInvoice}>
-                            <div class="slds-box slds-theme_shade slds-theme_alert-texture slds-m-bottom_medium">
-                                <div class="slds-text-align_center slds-m-bottom_medium">
-                                    <h2 class="slds-text-heading_medium slds-text-title_bold">General Hospital</h2>
-                                    <p class="slds-text-body_small">Balewadi High Street, baledwadi, Pune, Maharashtra, India</p>
-                                    <div class="slds-text-heading_small slds-m-top_small">INVOICE: {billData.name}</div>
+                            <div class="slds-box slds-theme_default slds-m-bottom_medium slds-p-around_large" style="box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #e5e5e5;">
+                                <!-- Invoice Header -->
+                                <div class="slds-grid slds-grid_align-spread slds-border_bottom slds-p-bottom_medium slds-m-bottom_medium">
+                                    <div>
+                                        <div class="slds-text-heading_large slds-text-color_success slds-grid slds-grid_vertical-align-center">
+                                            <lightning-icon icon-name="standard:account" size="small" class="slds-m-right_small"></lightning-icon>
+                                            <span class="slds-text-title_bold">INVOICE</span>
+                                        </div>
+                                        <div class="slds-text-body_small slds-m-top_xx-small slds-p-left_small">#{billData.name}</div>
+                                    </div>
+                                    <div class="slds-text-align_right">
+                                        <div class="slds-text-heading_small slds-text-title_bold">General Hospital</div>
+                                        <div class="slds-text-body_small slds-text-color_weak">Balewadi High Street<br/>Pune, Maharashtra, India</div>
+                                    </div>
                                 </div>
                                 
-                                <div class="slds-grid slds-wrap slds-gutters slds-p-bottom_small slds-border_bottom">
+                                <!-- Bill Details Grid -->
+                                <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_large">
                                     <div class="slds-col slds-size_1-of-2">
-                                        <p><strong>Date:</strong> {billData.date}</p>
-                                        <p><strong>Patient:</strong> {billData.patientName}</p>
+                                        <div class="slds-text-title_caps slds-text-color_weak slds-m-bottom_xx-small">Bill To</div>
+                                        <div class="slds-text-heading_small">{billData.patientName}</div>
                                     </div>
                                     <div class="slds-col slds-size_1-of-2 slds-text-align_right">
-                                        <p><strong>Doctor:</strong> {billData.doctorName}</p>
+                                        <div class="slds-grid slds-grid_vertical">
+                                            <div class="slds-m-bottom_xx-small">
+                                                <span class="slds-text-title_caps slds-text-color_weak slds-m-right_small">Date:</span>
+                                                <lightning-formatted-date-time value={billData.date} year="numeric" month="long" day="numeric"></lightning-formatted-date-time>
+                                            </div>
+                                            <div>
+                                                <span class="slds-text-title_caps slds-text-color_weak slds-m-right_small">Doctor:</span>
+                                                <span>{billData.doctorName}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-top_medium">
+
+                                <!-- Line Items Table -->
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped slds-m-bottom_large">
                                     <thead>
                                         <tr class="slds-line-height_reset">
-                                            <th scope="col"><div class="slds-truncate">Item</div></th>
-                                            <th scope="col"><div class="slds-truncate">Price</div></th>
-                                            <th scope="col"><div class="slds-truncate">Qty</div></th>
-                                            <th scope="col"><div class="slds-truncate">Total</div></th>
+                                            <th scope="col"><div class="slds-truncate">Item / Medication</div></th>
+                                            <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Price</div></th>
+                                            <th scope="col" class="slds-text-align_center"><div class="slds-truncate">Qty</div></th>
+                                            <th scope="col" class="slds-text-align_right"><div class="slds-truncate">Total</div></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <template for:each={billData.items} for:item="item">
                                             <tr key={item.id}>
-                                                <td><div class="slds-truncate">{item.medication}</div></td>
-                                                <td><div class="slds-truncate">{item.price}</div></td>
-                                                <td><div class="slds-truncate">{item.quantity}</div></td>
-                                                <td><div class="slds-truncate">{item.total}</div></td>
+                                                <td><div class="slds-truncate"><strong>{item.medication}</strong></div></td>
+                                                <td class="slds-text-align_right"><div class="slds-truncate"><lightning-formatted-number value={item.price} format-style="currency" currency-code="INR"></lightning-formatted-number></div></td>
+                                                <td class="slds-text-align_center"><div class="slds-truncate">{item.quantity}</div></td>
+                                                <td class="slds-text-align_right"><div class="slds-truncate"><lightning-formatted-number value={item.total} format-style="currency" currency-code="INR"></lightning-formatted-number></div></td>
                                             </tr>
                                         </template>
                                     </tbody>
                                 </table>
-                                <div class="slds-grid slds-grid_align-end slds-m-top_medium">
+                                <template if:false={billData.items.length}>
+                                    <div class="slds-text-align_center slds-p-around_medium slds-text-color_weak slds-m-bottom_large">
+                                        No line items found for this bill.
+                                    </div>
+                                </template>
+
+                                <!-- Totals Section -->
+                                <div class="slds-grid slds-grid_align-end">
                                     <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
-                                        <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
-                                            <span>Subtotal:</span> <span>{billData.subTotal}</span>
-                                        </div>
-                                        <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
-                                            <span>Tax ({billData.taxPercentage}%):</span> <span>{billData.taxAmount}</span>
-                                        </div>
-                                        <div class="slds-grid slds-grid_align-spread slds-text-heading_small slds-p-top_small slds-border_top">
-                                            <strong>Total:</strong> <strong>{billData.totalAmount}</strong>
+                                        <div class="slds-box slds-box_x-small slds-theme_shade">
+                                            <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
+                                                <span class="slds-text-color_weak">Subtotal:</span> 
+                                                <lightning-formatted-number value={billData.subTotal} format-style="currency" currency-code="INR"></lightning-formatted-number>
+                                            </div>
+                                            <div class="slds-grid slds-grid_align-spread slds-p-vertical_xx-small">
+                                                <span class="slds-text-color_weak">Tax ({billData.taxPercentage}%):</span> 
+                                                <lightning-formatted-number value={billData.taxAmount} format-style="currency" currency-code="INR"></lightning-formatted-number>
+                                            </div>
+                                            <div class="slds-grid slds-grid_align-spread slds-text-heading_small slds-p-top_small slds-border_top slds-m-top_small">
+                                                <strong>Total:</strong> 
+                                                <strong><lightning-formatted-number value={billData.totalAmount} format-style="currency" currency-code="INR"></lightning-formatted-number></strong>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="slds-text-align_right slds-m-top_medium slds-border_top slds-p-top_small">
-                                    <lightning-button label="Email PDF" icon-name="utility:email" onclick={handleEmailPdf} variant="brand"></lightning-button>
+                                
+                                <!-- Footer Actions -->
+                                <div class="slds-text-align_right slds-m-top_large slds-border_top slds-p-top_medium">
+                                    <lightning-button label="Email PDF Invoice" icon-name="utility:email" onclick={handleEmailPdf} variant="brand" class="slds-m-left_small"></lightning-button>
                                 </div>
                             </div>
                         </template>
