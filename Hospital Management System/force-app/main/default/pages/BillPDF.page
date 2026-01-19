@@ -1,17 +1,26 @@
 <apex:page standardController="Bill__c" extensions="BillTriggerHandler" action="{!attemptEmail}" renderAs="pdf" applyBodyTag="false">
     <head>
         <style>
-            body{font-family:sans-serif;font-size:12px;}
-            .header{text-align:center;margin-bottom:30px;border-bottom:2px solid #ccc;padding-bottom:10px;}
-            .info-table{width:100%;margin-bottom:20px;}
-            .info-table td{padding:5px;vertical-align:top;}
-            .line-items{width:100%;border-collapse:collapse;margin-top:20px;}
-            .line-items th, .line-items td{border:1px solid #ddd;padding:8px;text-align:left;}
-            .line-items th{background-color:#f2f2f2;}
-            .totals{margin-top:20px;float:right;width:40%;}
-            .totals table{width:100%;}
-            .totals td{text-align:right;padding:5px;}
-            .footer{margin-top:50px;text-align:center;font-size:10px;color:#666;}
+            @page {size: A4;
+                margin: 1cm;}
+            body {font-family: 'Arial Unicode MS', sans-serif;font-size: 12px;}
+            .header {text-align: center;margin-bottom: 30px;border-bottom: 1px solid #d8dde6;padding-bottom: 20px;}
+            .header h1 {color: #0070d2;font-size: 24px;margin: 0;text-transform: uppercase;letter-spacing: 1px;}
+            .header h3 {margin: 5px 0 0;font-weight: normal;color: #54698d;}
+            .info-table {width: 100%;margin-bottom: 30px;border-collapse: collapse;}
+            .info-table td {padding: 5px;vertical-align: top;}
+            .label {color: #54698d;font-weight: bold;font-size: 11px;text-transform: uppercase;}
+            .line-items {width: 100%;border-collapse: collapse;margin-top: 20px;}
+            .line-items th {background-color: #f3f2f2;color: #54698d;font-weight: bold;
+                            text-transform: uppercase;font-size: 11px;padding: 10px;border-bottom: 2px solid #d8dde6;text-align: left;}
+            .line-items td {padding: 10px;border-bottom: 1px solid #d8dde6;color: #16325c;}
+            .text-right {text-align: right;}
+            .totals {margin-top: 30px;float: right;width: 40%;}
+            .totals table {width: 100%;border-collapse: collapse;}
+            .totals td {padding: 8px;text-align: right;}
+            .totals .total-row {background-color: #0070d2;color: white;font-weight: bold;font-size: 14px;}
+            .footer {position: fixed;bottom: 0;width: 100%;text-align: center;font-size: 10px;
+                        color: #9faab5;border-top: 1px solid #d8dde6;padding-top: 10px;}
         </style>
     </head>
     <body>
@@ -22,16 +31,36 @@
         <table class="info-table">
             <tr>
                 <td width="50%">
-                    <strong>Bill To:</strong><br/>
-                    {!Bill__c.Patient__r.Name}<br/>
-                    {!Bill__c.Patient__r.PersonEmail}
+                    <div class="label">Bill To:</div>
+                    <div style="margin-top:5px;">
+                        <strong>{!Bill__c.Patient__r.Name}</strong><br/>
+                        {!Bill__c.Patient__r.PersonEmail}
+                    </div>
                 </td>
                 <td width="50%" style="text-align:right;">
-                    <strong>Invoice Details:</strong><br/>
-                    Invoice #:{!Bill__c.Name}<br/>
-                    Date:<apex:outputText value="{0,date,MM/dd/yyyy}"><apex:param value="{!Bill__c.Billing_Date__c}"/></apex:outputText><br/>
-                    Consultation:{!Bill__c.Consultation__r.Name}<br/>
-                    Prescription:{!Bill__c.Prescription__r.Name}
+                    <div class="label">Invoice Details</div>
+                    <table style="width:100%; text-align:right; margin-top:5px;">
+                        <tr>
+                            <td style="color:#54698d;">Invoice #:</td>
+                            <td>{!Bill__c.Name}</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#54698d;">Date:</td>
+                            <td>
+                                <apex:outputText value="{0,date,dd MMM yyyy}">
+                                    <apex:param value="{!Bill__c.Billing_Date__c}"/>
+                                </apex:outputText>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="color:#54698d;">Consultation:</td>
+                            <td>{!Bill__c.Consultation__r.Name}</td>
+                        </tr>
+                        <tr>
+                            <td style="color:#54698d;">Prescription:</td>
+                            <td>{!Bill__c.Prescription__r.Name}</td>
+                        </tr>
+                    </table>
                 </td>
             </tr>
         </table>
@@ -40,9 +69,9 @@
                 <tr>
                     <th>Item #</th>
                     <th>Medication</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Line Total</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Line Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,9 +79,17 @@
                     <tr>
                         <td>{!line.Name}</td>
                         <td>{!line.Medication__r.Name}</td>
-                        <td>{!line.Quantity__c}</td>
-                        <td>{!line.Unit_Price__c}</td>
-                        <td>{!line.Line_Total__c}</td>
+                        <td class="text-right">{!line.Quantity__c}</td>
+                        <td class="text-right">
+                            <apex:outputText value="INR {0, number, ###,###,##0.00}">
+                                <apex:param value="{!line.Unit_Price__c}"/>
+                            </apex:outputText>
+                        </td>
+                        <td class="text-right">
+                            <apex:outputText value="INR {0, number, ###,###,##0.00}">
+                                <apex:param value="{!line.Line_Total__c}"/>
+                            </apex:outputText>
+                        </td>
                     </tr>
                 </apex:repeat>
             </tbody>
@@ -60,10 +97,35 @@
 
         <div class="totals">
             <table>
-                <tr><td><strong>Sub Total:</strong></td><td>{!Bill__c.Sub_Total__c}</td></tr>
-                <tr><td><strong>Tax ({!Bill__c.Tax_Percentage__c}%):</strong></td><td>{!Bill__c.Total_Amount__c - Bill__c.Sub_Total__c}</td></tr>
-                <tr><td><h3>Total Amount:</h3></td><td><h3>{!Bill__c.Total_Amount__c}</h3></td></tr>
+                <tr>
+                    <td><strong>Sub Total:</strong></td>
+                    <td>
+                        <apex:outputText value="INR {0, number, ###,###,##0.00}">
+                            <apex:param value="{!Bill__c.Sub_Total__c}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Tax ({!Bill__c.Tax_Percentage__c}%):</strong></td>
+                    <td>
+                        <apex:outputText value="INR {0, number, ###,###,##0.00}">
+                            <apex:param value="{!Bill__c.Total_Amount__c - Bill__c.Sub_Total__c}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
+                <tr class="total-row">
+                    <td>Total Amount:</td>
+                    <td>
+                        <apex:outputText value="INR {0, number, ###,###,##0.00}">
+                            <apex:param value="{!Bill__c.Total_Amount__c}"/>
+                        </apex:outputText>
+                    </td>
+                </tr>
             </table>
+        </div>
+        
+        <div class="footer">
+            Generated by Hospital Management System
         </div>
     </body>
 </apex:page>

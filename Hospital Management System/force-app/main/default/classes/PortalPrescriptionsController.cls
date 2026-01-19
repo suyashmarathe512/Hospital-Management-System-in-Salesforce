@@ -187,13 +187,16 @@ public without sharing class PortalPrescriptionsController{
                 throw new AuraHandledException('Invalid Prescription ID.');
             }
             Prescription__c pres=[SELECT
-                                        Name,Account__r.PersonEmail,Account__r.Name
+                                        Name,Account__r.PersonEmail,Account__r.Name,Invoice_Public_Link__c
                                     FROM
                                         Prescription__c
                                     WHERE
                                         Id=:prescriptionId LIMIT 1];
             if(pres.Account__r==null||String.isBlank(pres.Account__r.PersonEmail)){
                 throw new AuraHandledException('No email address found for this patient.');
+            }
+            if(String.isBlank(pres.Invoice_Public_Link__c)){
+                throw new AuraHandledException('No public invoice link found for this prescription.');
             }
             Id oweaId;
             List<OrgWideEmailAddress> oweas = [SELECT
@@ -206,44 +209,26 @@ public without sharing class PortalPrescriptionsController{
             if(oweaId == null){
                 System.debug(LoggingLevel.ERROR, 'CRITICAL: No Org-Wide Email Address found. Guest Users cannot send emails without one. Please check Setup > Org-Wide Email Addresses and Profile Eligibility.');
             }
-            System.enqueueJob(new EmailPdfQueueable(prescriptionId,pres.Account__r.PersonEmail,pres.Name,pres.Account__r.Name, oweaId));
+            System.enqueueJob(new EmailPdfQueueable(pres.Account__r.PersonEmail,pres.Name,pres.Account__r.Name, oweaId, pres.Invoice_Public_Link__c));
         }catch(Exception e){
             throw new AuraHandledException('Error initiating email:'+e.getMessage());
         }
     }
     public without sharing class EmailPdfQueueable implements Queueable,Database.AllowsCallouts {
-        private Id prescriptionId;
         private String emailAddress;
         private String prescriptionName;
         private String patientName;
         private Id oweaId;
-        public EmailPdfQueueable(Id prescriptionId,String emailAddress,String prescriptionName,String patientName, Id oweaId){
-            this.prescriptionId=prescriptionId;
+        private String publicLink;
+        public EmailPdfQueueable(String emailAddress,String prescriptionName,String patientName, Id oweaId, String publicLink){
             this.emailAddress=emailAddress;
             this.prescriptionName=prescriptionName;
             this.patientName=patientName;
             this.oweaId=oweaId;
+            this.publicLink=publicLink;
         }
         public void execute(QueueableContext context){
             try {
-                List<ContentDocumentLink> docs = [SELECT
-                                                    ContentDocument.LatestPublishedVersion.VersionData, ContentDocument.Title, ContentDocument.FileExtension 
-                                                FROM
-                                                    ContentDocumentLink 
-                                                WHERE
-                                                    LinkedEntityId = :prescriptionId 
-                                                ORDER BY
-                                                    ContentDocument.CreatedDate DESC LIMIT 1];
-                
-                if(docs.isEmpty()){
-                    System.debug('No Invoice PDF found for Prescription: ' + prescriptionId);
-                    return;
-                }
-                Blob pdfBlob = docs[0].ContentDocument.LatestPublishedVersion.VersionData;
-                String fileName = docs[0].ContentDocument.Title;
-                if(String.isNotBlank(docs[0].ContentDocument.FileExtension) && !fileName.endsWithIgnoreCase(docs[0].ContentDocument.FileExtension)){
-                    fileName += '.' + docs[0].ContentDocument.FileExtension;
-                }
                 Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
                 mail.setToAddresses(new List<String>{emailAddress});
                 // Professional Subject
@@ -256,7 +241,10 @@ public without sharing class PortalPrescriptionsController{
                     '<div style="padding:30px; background-color:#ffffff;">'+
                     '<p>Dear '+(String.isBlank(patientName)?'Patient':patientName)+',</p>'+
                     '<p>We hope this email finds you well.</p>'+
-                    '<p>Please find attached the invoice for your recent prescription <strong>'+prescriptionName+'</strong>.</p>'+
+                    '<p>You can view and download the invoice for your recent prescription <strong>'+prescriptionName+'</strong> by clicking the link below:</p>'+
+                    '<div style="text-align: center; margin: 20px 0;">'+
+                    '<a href="'+publicLink+'" style="background-color:#0070d2; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:4px; font-weight:bold; display:inline-block;">View Invoice</a>'+
+                    '</div>'+
                     '<p>If you have any questions regarding this invoice,please do not hesitate to contact our billing department.</p>'+
                     '<br/>'+
                     '<p>Sincerely,</p>'+
@@ -269,12 +257,7 @@ public without sharing class PortalPrescriptionsController{
                     '</div>';
                 
                 mail.setHtmlBody(htmlBody);
-                mail.setPlainTextBody('Dear '+(String.isBlank(patientName)?'Patient':patientName)+',\n\nPlease find attached the invoice for your recent prescription '+prescriptionName+'.\n\nSincerely,\nGeneral Hospital Team');
-                Messaging.EmailFileAttachment attach=new Messaging.EmailFileAttachment();
-                attach.setFileName(fileName);
-                attach.setBody(pdfBlob);
-                attach.setContentType('application/pdf');
-                mail.setFileAttachments(new List<Messaging.EmailFileAttachment>{attach});
+                mail.setPlainTextBody('Dear '+(String.isBlank(patientName)?'Patient':patientName)+',\n\nYou can view and download the invoice for your recent prescription '+prescriptionName+' here: '+publicLink+'\n\nSincerely,\nGeneral Hospital Team');
                 if(oweaId != null){
                     mail.setOrgWideEmailAddressId(oweaId);
                 } else {
