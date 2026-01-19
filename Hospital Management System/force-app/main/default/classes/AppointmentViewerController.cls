@@ -46,7 +46,7 @@ public with sharing class AppointmentViewerController{
     public static List<Consultation__c> getConsultationHistory(String patientId){
         return [SELECT 
                     Id,Name,Date_of_Visit__c,Doctor__c,Doctor__r.Name,
-                    Visit_Charges__c
+                    Visit_Charges__c,Next_Visit__c
                 FROM
                     Consultation__c
                 WHERE
@@ -57,7 +57,9 @@ public with sharing class AppointmentViewerController{
     @AuraEnabled(cacheable=true)
     public static List<Prescription__c> getPatientPrescriptions(String patientId){
         return [SELECT 
-                    Id,Name,CreatedDate,Consultation__r.Doctor__r.Name,Notes__c
+                    Id,Name,CreatedDate,Consultation__r.Doctor__r.Name,Notes__c,
+                    Consultation__r.Date_of_Visit__c,
+                    (SELECT Name, Dosage__c, Frequency__c, Duration_Days__c FROM Medications__r)
                 FROM
                     Prescription__c
                 WHERE

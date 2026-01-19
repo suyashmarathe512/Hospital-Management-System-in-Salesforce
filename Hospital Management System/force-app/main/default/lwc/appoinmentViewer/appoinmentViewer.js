@@ -52,7 +52,9 @@ export default class AppoinmentViewer extends LightningElement{
             this.consultationHistory = data.map(record => ({
                 ...record,
                 DoctorName: record.Doctor__r ? record.Doctor__r.Name : '',
-                consultationUrl: '/' + record.Id
+                consultationUrl: '/' + record.Id,
+                statusClass: record.Next_Visit__c ? 'slds-badge slds-theme_warning' : 'slds-badge slds-theme_success',
+                statusLabel: record.Next_Visit__c ? 'Follow-up Required' : 'Completed'
             }));
         } else if (error) {
             console.error('Error loading history', error);
@@ -64,30 +66,17 @@ export default class AppoinmentViewer extends LightningElement{
         if (data) {
             this.prescriptionHistory = data.map(record => ({
                 ...record,
-                DoctorName: record.Consultation__r && record.Consultation__r.Doctor__r ? record.Consultation__r.Doctor__r.Name : '',
-                prescriptionUrl: '/' + record.Id
+                DoctorName: record.Consultation__r && record.Consultation__r.Doctor__r ? record.Consultation__r.Doctor__r.Name : 'Unknown Doctor',
+                VisitDate: record.Consultation__r ? record.Consultation__r.Date_of_Visit__c : record.CreatedDate,
+                prescriptionUrl: '/' + record.Id,
+                medications: record.Medications__r ? record.Medications__r : [],
+                hasMedications: record.Medications__r && record.Medications__r.length > 0,
+                hasNotes: !!record.Notes__c
             }));
         } else if (error) {
             console.error('Error loading prescriptions', error);
             this.prescriptionHistory = [];
         }
-    }
-    get historyColumns() {
-        return [
-            { label: 'Consultation #', fieldName: 'consultationUrl', type: 'url', typeAttributes: { label: { fieldName: 'Name' }, target: '_blank' } },
-            { label: 'Date', fieldName: 'Date_of_Visit__c', type: 'date' },
-            { label: 'Doctor', fieldName: 'DoctorName', type: 'text' },
-            { label: 'Charges', fieldName: 'Visit_Charges__c', type: 'currency' },
-            { label: 'Next Visit', fieldName: 'Next_Visit__c', type: 'date' }
-        ];
-    }
-    get prescriptionColumns() {
-        return [
-            { label: 'Prescription #', fieldName: 'prescriptionUrl', type: 'url', typeAttributes: { label: { fieldName: 'Name' }, target: '_blank' } },
-            { label: 'Date', fieldName: 'CreatedDate', type: 'date' },
-            { label: 'Doctor', fieldName: 'DoctorName', type: 'text' },
-            { label: 'Notes', fieldName: 'Notes__c', type: 'text' }
-        ];
     }
     get hasHistory() { return this.consultationHistory && this.consultationHistory.length > 0; }
     get hasUpcoming() { return this.upcomingAppointments && this.upcomingAppointments.length > 0; }

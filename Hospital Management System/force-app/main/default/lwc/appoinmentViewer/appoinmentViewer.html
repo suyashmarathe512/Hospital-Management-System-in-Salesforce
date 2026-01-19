@@ -38,34 +38,86 @@
                         </div>
                         <div class="slds-col slds-size_1-of-1 slds-p-top_medium slds-border_top">
                             <lightning-tabset variant="scoped">
-                                <lightning-tab label="Consultation History" icon-name="standard:case">
+                                <lightning-tab label="Clinical History (Timeline)">
+                                    <template if:true={hasPrescriptions}>
+                                        <div class="timeline-container custom-scrollbar">
+                                            <template for:each={prescriptionHistory} for:item="presc">
+                                                <div key={presc.Id} class="timeline-item slds-m-bottom_medium">
+                                                    <div class="slds-card slds-p-around_small">
+                                                        <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                                                            <div>
+                                                                <h3 class="slds-text-heading_small slds-text-color_default">
+                                                                    <lightning-icon icon-name="standard:user" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                                                                    Dr. {presc.DoctorName}
+                                                                </h3>
+                                                                <div class="slds-text-body_small slds-text-color_weak">
+                                                                    <lightning-formatted-date-time value={presc.VisitDate} year="numeric" month="long" day="numeric"></lightning-formatted-date-time>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <template if:true={presc.hasNotes}>
+                                                            <div class="slds-box slds-box_x-small slds-theme_shade slds-m-bottom_small">
+                                                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Diagnosis / Notes</p>
+                                                                <p class="slds-text-body_regular">{presc.Notes__c}</p>
+                                                            </div>
+                                                        </template>
+                                                        <template if:true={presc.hasMedications}>
+                                                            <div class="slds-m-top_small">
+                                                                <p class="slds-text-title_caps slds-m-bottom_xx-small">Medications</p>
+                                                                <div class="slds-grid slds-wrap">
+                                                                    <template for:each={presc.medications} for:item="med">
+                                                                        <span key={med.Id} class="medication-tag">
+                                                                            <strong>{med.Name}</strong> 
+                                                                            <span if:true={med.Dosage__c}> ({med.Dosage__c})</span>
+                                                                            <span if:true={med.Duration_Days__c}> - {med.Duration_Days__c} Days</span>
+                                                                        </span>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <template if:false={hasPrescriptions}>
+                                        <div class="slds-illustration slds-illustration_small">
+                                            <div class="slds-text-longform">
+                                                <h3 class="slds-text-heading_medium">No Clinical History</h3>
+                                                <p class="slds-text-body_regular">No prescriptions or clinical notes found for this patient.</p>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </lightning-tab>
+                                <lightning-tab label="Visits & Billing" icon-name="standard:case">
                                     <template if:true={hasHistory}>
-                                        <div style="height: 200px;">
-                                            <lightning-datatable
-                                                key-field="Id"
-                                                data={consultationHistory}
-                                                columns={historyColumns}
-                                                hide-checkbox-column>
-                                            </lightning-datatable>
+                                        <div class="slds-scrollable_y" style="max-height: 400px;">
+                                            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                                                <thead>
+                                                    <tr class="slds-line-height_reset">
+                                                        <th scope="col"><div class="slds-truncate">Date</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Doctor</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Charges</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Status</div></th>
+                                                        <th scope="col"><div class="slds-truncate">Next Visit</div></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template for:each={consultationHistory} for:item="cons">
+                                                        <tr key={cons.Id}>
+                                                            <td><lightning-formatted-date-time value={cons.Date_of_Visit__c}></lightning-formatted-date-time></td>
+                                                            <td>{cons.DoctorName}</td>
+                                                            <td><lightning-formatted-number value={cons.Visit_Charges__c} format-style="currency" currency-code="INR"></lightning-formatted-number></td>
+                                                            <td><span class={cons.statusClass}>{cons.statusLabel}</span></td>
+                                                            <td><lightning-formatted-date-time value={cons.Next_Visit__c}></lightning-formatted-date-time></td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </template>
                                     <template if:false={hasHistory}>
                                         <p class="slds-text-color_weak slds-p-around_medium">No previous consultations found for this patient.</p>
-                                    </template>
-                                </lightning-tab>
-                                <lightning-tab label="Prescriptions" icon-name="standard:prescription">
-                                    <template if:true={hasPrescriptions}>
-                                        <div style="height: 200px;">
-                                            <lightning-datatable
-                                                key-field="Id"
-                                                data={prescriptionHistory}
-                                                columns={prescriptionColumns}
-                                                hide-checkbox-column>
-                                            </lightning-datatable>
-                                        </div>
-                                    </template>
-                                    <template if:false={hasPrescriptions}>
-                                        <p class="slds-text-color_weak slds-p-around_medium">No prescriptions found for this patient.</p>
                                     </template>
                                 </lightning-tab>
                             </lightning-tabset>
