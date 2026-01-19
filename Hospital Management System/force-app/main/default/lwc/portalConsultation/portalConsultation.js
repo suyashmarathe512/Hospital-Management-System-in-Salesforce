@@ -29,10 +29,29 @@ export default class PortalConsultations extends NavigationMixin(LightningElemen
                 isExpanded: false,
                 badgeClass: this.getBadgeClass(this.calculateStatus(con.Next_Visit__c))
             }));
+            this.sortConsultations();
         } else if (error) {
             console.error('Error fetching consultations:', error);
             this.consultations = [];
         }
+    }
+
+    get sortIcon() {
+        return this.sortDirection === 'asc' ? 'utility:arrowup' : 'utility:arrowdown';
+    }
+
+    handleSort() {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        this.sortConsultations();
+    }
+
+    sortConsultations() {
+        let data = [...this.consultations];
+        const isAsc = this.sortDirection === 'asc';
+        data.sort((a, b) => {
+            return isAsc ? new Date(a.visitDate) - new Date(b.visitDate) : new Date(b.visitDate) - new Date(a.visitDate);
+        });
+        this.consultations = data;
     }
 
     calculateStatus(nextVisitDate) {
