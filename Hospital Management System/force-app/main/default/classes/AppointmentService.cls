@@ -122,11 +122,23 @@ global with sharing class AppointmentService{
             if(!upsertList.isEmpty()){
                 // Bulk upsert
                 upsert upsertList;
+                
+                // Re-query to get the latest status determined by Server Triggers (e.g. Queued)
+                Map<Id, Appointment__c> latestInfo=new Map<Id, Appointment__c>([SELECT
+                                                                                    Id, Appointment_Status__c
+                                                                                FROM
+                                                                                    Appointment__c
+                                                                                WHERE
+                                                                                    Id
+                                                                                IN
+                                                                                    :upsertList]);
                 for(Integer i=0; i<upsertList.size(); i++){
                     // Map ClientId to newly saved SF Id and Status for response
                     Map<String,String> details=new Map<String,String>();
                     details.put('serverAppointmentId',upsertList[i].Id);
-                    details.put('status',upsertList[i].Appointment_Status__c);
+                    // Use the re-queried status
+                    Appointment__c fresh=latestInfo.get(upsertList[i].Id);
+                    details.put('status', fresh != null ? fresh.Appointment_Status__c : upsertList[i].Appointment_Status__c);
                     responseMap.put(clientIds[i],details);
                 }
             }

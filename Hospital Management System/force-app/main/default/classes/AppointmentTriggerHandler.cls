@@ -12,6 +12,25 @@
 public with sharing class AppointmentTriggerHandler{
 /*****************************************************************************************************
  * @Author:       CRM Team Innovation
+ * @MethodName:   onBeforeInsert
+ * @param1:     List<Appointment__c> newAppointments
+ * @Description:  Calls enforceDailyQuota to handle assignment and queuing before record is saved.
+ **************************************************************************************************************/
+    public static void onBeforeInsert(List<Appointment__c> newAppointments){
+        enforceDailyQuota(newAppointments,null);
+    }
+/*****************************************************************************************************
+ * @Author:       CRM Team Innovation
+ * @MethodName:   onBeforeUpdate
+ * @param1:     List<Appointment__c> newAppointments
+ * @param2:     Map<Id,Appointment__c> oldMap
+ * @Description:  Calls enforceDailyQuota to handle assignment and queuing before record is saved.
+ **************************************************************************************************************/
+    public static void onBeforeUpdate(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
+        enforceDailyQuota(newAppointments,oldMap);
+    }
+/*****************************************************************************************************
+ * @Author:       CRM Team Innovation
  * @MethodName:   onAfterInsert
  * @param1:     List<Appointment__c> newAppointments
  * @Description:  This method is responsible for calling the sendAssignmentNotifications method.
@@ -39,7 +58,7 @@ public with sharing class AppointmentTriggerHandler{
  *                It handles auto-assignment and moves appointments to a queue if the quota is met.
  **************************************************************************************************************/
     public static void enforceDailyQuota(List<Appointment__c> newAppointments,Map<Id,Appointment__c> oldMap){
-        final Integer DAILY_QUOTA=10;
+        final Integer DAILY_QUOTA=2;
         final String STATUS_CONFIRMED='Confirmed';
         final String STATUS_COMPLETED='Completed';
         final String STATUS_WAITING='Queued';
@@ -344,6 +363,9 @@ public with sharing class AppointmentTriggerHandler{
         }else if(status=='Accepted'&&(isInsert||oldStatus!='Accepted')){
             subject='Appointment Accepted';
             bodyHeader='Your appointment has been accepted.';
+        }else if(status=='Queued'&&(isInsert||oldStatus!='Queued')){
+            subject='Appointment Queued';
+            bodyHeader='Your appointment has been placed in the waiting queue as the daily quota for this doctor has been reached.';
         }else if(isInsert){
             subject='Appointment Request Received';
             bodyHeader='Your appointment request has been received.';
