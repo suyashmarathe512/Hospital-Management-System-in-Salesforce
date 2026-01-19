@@ -107,7 +107,7 @@ global with sharing class BillTriggerHandler{
                 body+='--------------------------------------------------\n';
                 body+='Bill Number: '+bill.Name+'\n';
                 body+='Date: ' +(bill.Billing_Date__c!=null ? bill.Billing_Date__c.format():'')+'\n';
-                body+='Total Amount: '+bill.Total_Amount__c+'\n';
+                body+='Total Amount: INR '+bill.Total_Amount__c+'\n';
                 body+='--------------------------------------------------\n\n';
                 body+='If you have any questions regarding this bill,please contact our billing department.\n\n';
                 body+='Regards,\nHospital Management System';

@@ -54,7 +54,7 @@ export default class PortalAppointment extends LightningElement{
                 ...record,
                 // Ensure the Type column binds even if backend omits the field
                 Appointment_Type__c:record.Appointment_Type__c||'—',
-                DoctorName:record.Doctor__r?record.Doctor__r.Name:'',
+                DoctorName:record.Doctor__r?record.Doctor__r.Name:'Not yet Assigned',
                 isCancelDisabled:!(['Created','Accepted','Queued','Confirmed','Scheduled'].includes(record.Appointment_Status__c) && record.Appointment_Date__c >= todayStr)
         }));
 }else if(result.error){
