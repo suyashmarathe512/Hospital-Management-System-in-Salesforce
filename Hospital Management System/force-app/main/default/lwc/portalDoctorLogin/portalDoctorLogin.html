@@ -4,12 +4,13 @@
             <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
         </template>
         <lightning-card class="slds-size_1-of-1 slds-medium-size_1-of-2 slds-large-size_1-of-3 login-card">
-            <div slot="title" class="slds-text-align_center">
-                <lightning-icon icon-name="utility:lock" size="medium" class="slds-m-bottom_small"></lightning-icon>
-                <h1 class="slds-text-heading_large">Doctor Portal</h1>
-            </div>
             <div class="slds-p-around_large">
-                <p class="slds-m-bottom_medium slds-text-align_center">Please enter your registered email to login.</p>
+                <div class="slds-text-align_center slds-m-bottom_large">
+                    <lightning-icon icon-name="standard:user" size="large" class="slds-m-bottom_small"></lightning-icon>
+                    <h1 class="slds-text-heading_large">Doctor Portal</h1>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">Secure Access</p>
+                </div>
+                <p class="slds-m-bottom_medium slds-text-color_weak">Please enter your registered email to login.</p>
                 <lightning-input 
                     type="email" 
                     label="Email Address" 
@@ -17,11 +18,14 @@
                     value={email} 
                     onchange={handleEmailChange}
                     required
+                    message-when-value-missing="Please enter your email address."
                     class="slds-m-bottom_medium">
                 </lightning-input>
                 <lightning-button 
                     variant="brand" 
                     label="Login" 
+                    icon-name="utility:login"
+                    icon-position="right"
                     onclick={handleLogin} 
                     class="slds-size_full"
                     stretch>
@@ -36,18 +40,38 @@
         </lightning-card>
         <!-- Contact Administrator Modal -->
         <template if:true={isContactModalOpen}>
-            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading-01" class="slds-modal slds-fade-in-open">
                 <div class="slds-modal__container">
                     <header class="slds-modal__header">
-                        <h2 class="slds-text-heading_medium">Report an Issue</h2>
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={closeContactModal}>
+                            <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse" size="small"></lightning-icon>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium">Report an Issue</h2>
                     </header>
                     <div class="slds-modal__content slds-p-around_medium">
+                        <lightning-input 
+                            label="Full Name" 
+                            placeholder="Enter your full name" 
+                            value={issueName} 
+                            onchange={handleIssueNameChange}
+                            class="slds-m-bottom_medium">
+                        </lightning-input>
+                        <lightning-input 
+                            type="email" 
+                            label="Email Address" 
+                            placeholder="Enter your email" 
+                            value={issueEmail} 
+                            onchange={handleIssueEmailChange}
+                            class="slds-m-bottom_medium">
+                        </lightning-input>
                         <lightning-textarea 
                             label="Describe your issue" 
                             placeholder="Please provide details about the problem you are facing..." 
                             value={issueDescription} 
                             onchange={handleIssueChange}
-                            required>
+                            required
+                            message-when-value-missing="Please describe the issue.">
                         </lightning-textarea>
                     </div>
                     <footer class="slds-modal__footer">

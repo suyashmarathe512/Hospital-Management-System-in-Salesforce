@@ -34,17 +34,18 @@ public with sharing class portalDoctorLoginController{
 /*********************************************************************************************************
  * @Author:    CRM Team Innovation
  * @MethodName:   reportIssueToAdmin
- * @param1 :      String doctorEmail
- * @param2 :      String issueDescription
+ * @param1 :      String doctorName
+ * @param2 :      String doctorEmail
+ * @param3 :      String issueDescription
  * @Description: This method reports an issue to the admin.
  *****************************************************************************************************/
     @AuraEnabled
-    public static void reportIssueToAdmin(String doctorEmail,String issueDescription){
+    public static void reportIssueToAdmin(String doctorName, String doctorEmail,String issueDescription){
         try{
             Messaging.SingleEmailMessage mail=new Messaging.SingleEmailMessage();
             mail.setToAddresses(new String[]{'suyashmarathe1092003@gmail.com'}); 
             mail.setSubject('Doctor Portal Issue Report');
-            mail.setPlainTextBody('Issue reported by: ' +(String.isBlank(doctorEmail)?'Unknown':doctorEmail)+'\n\nDescription:\n' + issueDescription);
+            mail.setPlainTextBody('Issue reported by: ' + (String.isBlank(doctorName) ? 'Unknown' : doctorName) + ' (' +(String.isBlank(doctorEmail)?'Unknown Email':doctorEmail)+')\n\nDescription:\n' + issueDescription);
             Messaging.sendEmail(new Messaging.SingleEmailMessage[]{mail});
         }catch(Exception e){
             throw new AuraHandledException('Failed to send report: '+e.getMessage());

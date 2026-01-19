@@ -6,6 +6,8 @@ import reportIssueToAdmin from '@salesforce/apex/portalDoctorLoginController.rep
 export default class PortalDoctorLogin extends NavigationMixin(LightningElement){
     email='';
     isContactModalOpen=false;
+    issueName='';
+    issueEmail='';
     issueDescription='';
     isLoading=false;
     handleEmailChange(event){
@@ -43,20 +45,35 @@ export default class PortalDoctorLogin extends NavigationMixin(LightningElement)
     }
     openContactModal(){
         this.isContactModalOpen=true;
+        this.issueEmail = this.email;
     }
     closeContactModal(){
         this.isContactModalOpen=false;
+        this.issueName='';
+        this.issueEmail='';
         this.issueDescription='';
+    }
+    handleIssueNameChange(event){
+        this.issueName=event.target.value;
+    }
+    handleIssueEmailChange(event){
+        this.issueEmail=event.target.value;
     }
     handleIssueChange(event){
         this.issueDescription=event.target.value;
     }
     submitIssue(){
-        const textarea=this.template.querySelector('lightning-textarea');
-        if (textarea.reportValidity()){
+        const inputs = [...this.template.querySelectorAll('.slds-modal__content lightning-input, .slds-modal__content lightning-textarea')];
+        const allValid = inputs.reduce((validSoFar, inputCmp) => {
+            inputCmp.reportValidity();
+            return validSoFar && inputCmp.checkValidity();
+        }, true);
+
+        if (allValid){
             this.isLoading=true;
             reportIssueToAdmin({ 
-                doctorEmail:this.email,
+                doctorName:this.issueName,
+                doctorEmail:this.issueEmail,
                 issueDescription:this.issueDescription 
             })
                 .then(() =>{
