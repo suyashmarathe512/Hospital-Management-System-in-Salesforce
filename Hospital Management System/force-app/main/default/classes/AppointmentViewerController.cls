@@ -55,17 +55,72 @@ public with sharing class AppointmentViewerController{
                     Date_of_Visit__c DESC];
     }
     @AuraEnabled(cacheable=true)
-    public static List<Prescription__c> getPatientPrescriptions(String patientId){
-        return [SELECT 
+    public static List<Map<String, Object>> getPatientPrescriptions(String patientId){
+        List<Map<String, Object>> result = new List<Map<String, Object>>();
+        
+        List<Prescription__c> prescriptions = [SELECT 
                     Id,Name,CreatedDate,Consultation__r.Doctor__r.Name,Notes__c,
-                    Consultation__r.Date_of_Visit__c,
-                    (SELECT Name, Dosage__c, Frequency__c, Duration_Days__c FROM Medications__r)
+                    Consultation__r.Date_of_Visit__c
                 FROM
                     Prescription__c
                 WHERE
                     Account__c=:patientId
                 ORDER BY
                     CreatedDate DESC];
+        
+        if(prescriptions.isEmpty()) {
+            return result;
+        }
+
+        Set<Id> prescIds = new Set<Id>();
+        for(Prescription__c p : prescriptions) {
+            prescIds.add(p.Id);
+        }
+
+        // Fetch Opportunities and Line Items (Medicines)
+        List<Opportunity> opps = [SELECT Id, Prescription__c, 
+                                    (SELECT Id, Product2.Name, Quantity, Description FROM OpportunityLineItems) 
+                                  FROM Opportunity 
+                                  WHERE Prescription__c IN :prescIds];
+        
+        Map<Id, List<Map<String, Object>>> prescToMeds = new Map<Id, List<Map<String, Object>>>();
+        for(Opportunity opp : opps) {
+            if(opp.Prescription__c != null) {
+                List<Map<String, Object>> meds = new List<Map<String, Object>>();
+                for(OpportunityLineItem oli : opp.OpportunityLineItems) {
+                    Map<String, Object> med = new Map<String, Object>();
+                    med.put('Id', oli.Id);
+                    med.put('productName', oli.Product2.Name);
+                    med.put('quantity', oli.Quantity);
+                    med.put('description', oli.Description);
+                    meds.add(med);
+                }
+                prescToMeds.put(opp.Prescription__c, meds);
+            }
+        }
+
+        for(Prescription__c p : prescriptions) {
+            Map<String, Object> row = new Map<String, Object>();
+            row.put('Id', p.Id);
+            row.put('Name', p.Name);
+            row.put('Notes__c', p.Notes__c);
+            row.put('CreatedDate', p.CreatedDate);
+            
+            String docName = (p.Consultation__r != null && p.Consultation__r.Doctor__r != null) ? p.Consultation__r.Doctor__r.Name : 'Unknown Doctor';
+            row.put('DoctorName', docName);
+
+            Date visitDate = (p.Consultation__r != null && p.Consultation__r.Date_of_Visit__c != null) ? p.Consultation__r.Date_of_Visit__c : Date.valueOf(p.CreatedDate);
+            row.put('VisitDate', visitDate);
+
+            if(prescToMeds.containsKey(p.Id)) {
+                row.put('medications', prescToMeds.get(p.Id));
+            } else {
+                row.put('medications', new List<Map<String, Object>>());
+            }
+            result.add(row);
+        }
+        
+        return result;
     }
 /*****************************************************************************************************************************
  * @Author:     CRM Team Innovation
@@ -106,6 +161,7 @@ public with sharing class AppointmentViewerController{
             if(consultationData.containsKey('numberOfVisits')&&String.isNotBlank(String.valueOf(consultationData.get('numberOfVisits')))){
                 cons.Number_of_Visits__c=Decimal.valueOf(String.valueOf(consultationData.get('numberOfVisits')));
             }
+            
             // Fee Calculation Logic
             if(consultationData.containsKey('visitCharges')&&consultationData.get('visitCharges')!=null&&String.isNotBlank(String.valueOf(consultationData.get('visitCharges')))){
                 cons.Visit_Charges__c=Decimal.valueOf(String.valueOf(consultationData.get('visitCharges')));
@@ -130,30 +186,12 @@ public with sharing class AppointmentViewerController{
             presc.Account__c=patientId;
             presc.Notes__c=(String) consultationData.get('notes');
             insert presc;
-            // 3. Create Medication Line Items
+            
+            // 3. Create Opportunity and Line Items (Medicines)
             if(medications!=null&&!medications.isEmpty()){
-                List<Medication__c> lineItems=new List<Medication__c>();
-                for(Map<String,Object> med:medications){
-                    String medName=(String) med.get('name');
-                    if(String.isBlank(medName)) continue;
-                    Medication__c item=new Medication__c();
-                    item.Prescription__c=presc.Id;
-                    item.Name=medName;
-                    item.Dosage__c=(String) med.get('dosage');
-                    item.Frequency__c=(String) med.get('frequency');
-                    String durationStr=(String) med.get('duration');
-                    if(String.isNotBlank(durationStr)){
-                        String numericDuration=durationStr.replaceAll('[^0-9]','');
-                        if(String.isNotBlank(numericDuration)){
-                            item.Duration_Days__c=Decimal.valueOf(numericDuration);
-                        }
-                    }
-                    lineItems.add(item);
-                }
-                if(!lineItems.isEmpty()){
-                    insert lineItems;
-                }
+                handleMedicines(medications, patientId, presc.Id);
             }
+            
             // 4. Update Appointment Status to Completed
             if(consultationData.containsKey('appointmentId')&&String.isNotBlank((String)consultationData.get('appointmentId'))){
                 Appointment__c apptToUpdate=new Appointment__c();
@@ -185,6 +223,70 @@ public with sharing class AppointmentViewerController{
             throw new AuraHandledException('Error saving consultation: '+e.getMessage());
         }
     }
+
+    private static void handleMedicines(List<Map<String,Object>> medications, Id patientId, Id prescriptionId) {
+        // Fetch Prescription Name and Patient Name for Opportunity Naming
+        Prescription__c presc = [SELECT
+                                    Name, Account__r.Name
+                                FROM
+                                    Prescription__c
+                                WHERE
+                                    Id = :prescriptionId LIMIT 1];
+        
+        // Create Opportunity
+        Opportunity opp = new Opportunity();
+        opp.Name = presc.Account__r.Name + ' - ' + presc.Name;
+        opp.StageName = 'Closed Won';
+        opp.CloseDate = Date.today();
+        opp.Prescription__c = prescriptionId; 
+        insert opp;
+
+        // Collect Product IDs
+        Set<Id> productIds = new Set<Id>();
+        for(Map<String,Object> med : medications) {
+            if(med.containsKey('productId') && String.isNotBlank((String)med.get('productId'))) {
+                productIds.add((Id)med.get('productId'));
+            }
+        }
+
+        if(productIds.isEmpty()) return;
+
+        // Get Standard Pricebook ID
+        Id pricebookId;
+        if(Test.isRunningTest()) {
+            pricebookId = Test.getStandardPricebookId();
+        } else {
+            Pricebook2 stdPb = [SELECT Id FROM Pricebook2 WHERE IsStandard = true LIMIT 1];
+            pricebookId = stdPb.Id;
+        }
+
+        // Fetch PricebookEntries for Products
+        Map<Id, Id> pbeMap = new Map<Id, Id>();
+        for(PricebookEntry pbe : [SELECT Id, Product2Id FROM PricebookEntry WHERE Pricebook2Id = :pricebookId AND Product2Id IN :productIds]) {
+            pbeMap.put(pbe.Product2Id, pbe.Id);
+        }
+
+        List<OpportunityLineItem> oliList = new List<OpportunityLineItem>();
+        for(Map<String,Object> med : medications) {
+            Id prodId = (Id)med.get('productId');
+            if(String.isBlank(prodId)) continue;
+
+            if(!pbeMap.containsKey(prodId)) {
+                throw new AuraHandledException('Selected medicine is not in the Standard Pricebook.');
+            }
+
+            OpportunityLineItem oli = new OpportunityLineItem();
+            oli.OpportunityId = opp.Id;
+            oli.PricebookEntryId = pbeMap.get(prodId);
+            oli.Product2Id = prodId;
+            oli.Quantity = Decimal.valueOf(String.valueOf(med.get('quantity')));
+            oli.Description = (String)med.get('instructions');
+            oli.TotalPrice = 0; // No pricing logic required
+            oliList.add(oli);
+        }
+        insert oliList;
+    }
+
 /*******************************************************************************************************************
  * @Author:     CRM Team Innovation
  * @MethodName: calculateFeeLogic

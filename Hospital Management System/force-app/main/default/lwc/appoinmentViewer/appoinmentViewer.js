@@ -66,11 +66,8 @@ export default class AppoinmentViewer extends LightningElement{
         if (data) {
             this.prescriptionHistory = data.map(record => ({
                 ...record,
-                DoctorName: record.Consultation__r && record.Consultation__r.Doctor__r ? record.Consultation__r.Doctor__r.Name : 'Unknown Doctor',
-                VisitDate: record.Consultation__r ? record.Consultation__r.Date_of_Visit__c : record.CreatedDate,
                 prescriptionUrl: '/' + record.Id,
-                medications: record.Medications__r ? record.Medications__r : [],
-                hasMedications: record.Medications__r && record.Medications__r.length > 0,
+                hasMedications: record.medications && record.medications.length > 0,
                 hasNotes: !!record.Notes__c
             }));
         } else if (error) {
@@ -99,10 +96,9 @@ export default class AppoinmentViewer extends LightningElement{
         this.visitCharges='';
         this.medications=[{
             id:Date.now(),
-            name:'',
-            dosage:'',
-            frequency:'',
-            duration:''
+            productId:'',
+            quantity:1,
+            instructions:''
         }];
         getConsultationFee({doctorId:this.doctorId,patientId:this.patientId,visitDate:this.todayDate})
         .then(result=>{
@@ -132,10 +128,9 @@ export default class AppoinmentViewer extends LightningElement{
     addMedication(){
         this.medications=[...this.medications,{
             id:Date.now(),
-            name:'',
-            dosage:'',
-            frequency:'',
-            duration:''
+            productId:'',
+            quantity:1,
+            instructions:''
         }];
     }
     removeMedication(event){
@@ -144,13 +139,31 @@ export default class AppoinmentViewer extends LightningElement{
     }
     handleMedicationChange(event){
         const{index, field }=event.target.dataset;
+        const value = field === 'productId' ? event.detail.value[0] : event.target.value;
+
+        // Prevent duplicate medicine selection
+        if (field === 'productId' && value) {
+            const isDuplicate = this.medications.some((med, i) => i != index && med.productId === value);
+            if (isDuplicate) {
+                this.dispatchEvent(new ShowToastEvent({
+                    title: 'Duplicate Medicine',
+                    message: 'This medicine has already been added to the prescription.',
+                    variant: 'error'
+                }));
+                // Reset the field (requires re-render or manual reset, simplified here by not updating state)
+                // In a real scenario, we might want to clear the input explicitly.
+                return;
+            }
+        }
+
         const updatedMedications=[...this.medications];
-        updatedMedications[index]={...updatedMedications[index], [field]:event.target.value };
+        updatedMedications[index]={...updatedMedications[index], [field]: value };
         this.medications=updatedMedications;
     }
     handleSaveConsultation(){
         // Optimization:Filter out empty medication rows
-        const validMedications=this.medications.filter(med => med.name && med.name.trim().length > 0);
+        const validMedications=this.medications.filter(med => med.productId && med.quantity > 0);
+        
         // Optimization:Validation to ensure meaningful data is saved
         if (!this.consultationNotes && validMedications.length === 0){
             this.dispatchEvent(new ShowToastEvent({

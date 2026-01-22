@@ -67,9 +67,9 @@
                                                                 <div class="slds-grid slds-wrap">
                                                                     <template for:each={presc.medications} for:item="med">
                                                                         <span key={med.Id} class="medication-tag">
-                                                                            <strong>{med.Name}</strong> 
-                                                                            <span if:true={med.Dosage__c}> ({med.Dosage__c})</span>
-                                                                            <span if:true={med.Duration_Days__c}> - {med.Duration_Days__c} Days</span>
+                                                                            <strong>{med.productName}</strong> 
+                                                                            <span if:true={med.quantity}> (Qty: {med.quantity})</span>
+                                                                            <span if:true={med.description}> - {med.description}</span>
                                                                         </span>
                                                                     </template>
                                                                 </div>
@@ -222,20 +222,22 @@
                         <table class="slds-table slds-table_cell-buffer slds-table_bordered">
                             <thead>
                                 <tr class="slds-line-height_reset">
-                                    <th class="" scope="col"><div class="slds-truncate" title="Medicine Name">Medicine Name</div></th>
-                                    <th class="" scope="col"><div class="slds-truncate" title="Dosage">Dosage</div></th>
-                                    <th class="" scope="col"><div class="slds-truncate" title="Frequency">Frequency</div></th>
-                                    <th class="" scope="col"><div class="slds-truncate" title="Duration">Duration</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Medicine">Medicine</div></th>
+                                    <th class="" scope="col" style="width: 100px;"><div class="slds-truncate" title="Quantity">Quantity</div></th>
+                                    <th class="" scope="col"><div class="slds-truncate" title="Instructions">Instructions (Duration/Freq)</div></th>
                                     <th class="" scope="col"><div class="slds-truncate" title="Action">Action</div></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template for:each={medications} for:item="med" for:index="index">
                                     <tr key={med.id}>
-                                        <td><lightning-input variant="label-hidden" value={med.name} data-index={index} data-field="name" onchange={handleMedicationChange} placeholder="e.g. Paracetamol"></lightning-input></td>
-                                        <td><lightning-input variant="label-hidden" value={med.dosage} data-index={index} data-field="dosage" onchange={handleMedicationChange} placeholder="e.g. 500mg"></lightning-input></td>
-                                        <td><lightning-input variant="label-hidden" value={med.frequency} data-index={index} data-field="frequency" onchange={handleMedicationChange} placeholder="e.g. 1-0-1"></lightning-input></td>
-                                        <td><lightning-input variant="label-hidden" value={med.duration} data-index={index} data-field="duration" onchange={handleMedicationChange} placeholder="e.g. 5 Days"></lightning-input></td>
+                                        <td>
+                                            <lightning-record-edit-form object-api-name="OpportunityLineItem" density="compact">
+                                                <lightning-input-field field-name="Product2Id" variant="label-hidden" value={med.productId} data-index={index} data-field="productId" onchange={handleMedicationChange}></lightning-input-field>
+                                            </lightning-record-edit-form>
+                                        </td>
+                                        <td><lightning-input type="number" variant="label-hidden" value={med.quantity} data-index={index} data-field="quantity" onchange={handleMedicationChange} min="1"></lightning-input></td>
+                                        <td><lightning-input variant="label-hidden" value={med.instructions} data-index={index} data-field="instructions" onchange={handleMedicationChange} placeholder="e.g. 5 Days, 1-0-1"></lightning-input></td>
                                         <td><lightning-button-icon icon-name="utility:delete" variant="bare" alternative-text="Remove" title="Remove" data-index={index} onclick={removeMedication} class="slds-text-color_error"></lightning-button-icon></td>
                                     </tr>
                                 </template>

@@ -59,7 +59,7 @@ public without sharing class PortalPrescriptionsController{
         try{
             Prescription__c p=[SELECT
                                     Id,Name,Doctor_s_Name__c,CreatedDate,Notes__c,
-                        (SELECT 
+                                (SELECT 
                                         Name,Dosage__c,Frequency__c,Duration_Days__c
                                     FROM
                                         Medications__r)
