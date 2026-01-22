@@ -186,12 +186,16 @@ public without sharing class PortalPrescriptionsController{
             if(String.isBlank(prescriptionId)){
                 throw new AuraHandledException('Invalid Prescription ID.');
             }
-            Prescription__c pres=[SELECT
+            List<Prescription__c> presList=[SELECT
                                         Name,Account__r.PersonEmail,Account__r.Name,Invoice_Public_Link__c
                                     FROM
                                         Prescription__c
                                     WHERE
                                         Id=:prescriptionId LIMIT 1];
+            if(presList.isEmpty()){
+                throw new AuraHandledException('Prescription record not found.');
+            }
+            Prescription__c pres=presList[0];
             if(pres.Account__r==null||String.isBlank(pres.Account__r.PersonEmail)){
                 throw new AuraHandledException('No email address found for this patient.');
             }
